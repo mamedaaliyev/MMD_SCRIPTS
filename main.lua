@@ -990,8 +990,52 @@ local dragInputPoint = nil
 local dragStartScreenPos = nil
 local hasDragged = false
 
+local isResizingWindow = false
+local resizeDirX = 0
+local resizeDirY = 0
+local resizeStartSize = Vector2.new(0, 0)
+local resizeStartPos = UDim2.new()
+local resizeInputPoint = nil
+
+local function CreateResizeHandle(name, size, pos, anchor, rx, ry)
+    local handle = Instance.new("TextButton")
+    handle.Name = name
+    handle.Size = size
+    handle.Position = pos
+    handle.AnchorPoint = anchor
+    handle.BackgroundTransparency = 1
+    handle.Text = ""
+    handle.ZIndex = 100
+    handle.Parent = MainFrame
+
+    local handleDown = handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isResizingWindow = true
+            isDraggingWindow = false
+            resizeDirX = rx
+            resizeDirY = ry
+            resizeInputPoint = input.Position
+            resizeStartSize = MainFrame.AbsoluteSize
+            resizeStartPos = MainFrame.Position
+        end
+    end)
+    table.insert(ScriptConnections, handleDown)
+end
+
+local gs = 15
+CreateResizeHandle("R_TL", UDim2.new(0, gs*2, 0, gs*2), UDim2.new(0,0, 0,0), Vector2.new(0,0), -1, -1)
+CreateResizeHandle("R_TR", UDim2.new(0, gs*2, 0, gs*2), UDim2.new(1,0, 0,0), Vector2.new(1,0), 1, -1)
+CreateResizeHandle("R_BL", UDim2.new(0, gs*2, 0, gs*2), UDim2.new(0,0, 1,0), Vector2.new(0,1), -1, 1)
+CreateResizeHandle("R_BR", UDim2.new(0, gs*2, 0, gs*2), UDim2.new(1,0, 1,0), Vector2.new(1,1), 1, 1)
+
+CreateResizeHandle("R_T", UDim2.new(1, -gs*4, 0, gs), UDim2.new(0.5,0, 0,0), Vector2.new(0.5,0), 0, -1)
+CreateResizeHandle("R_B", UDim2.new(1, -gs*4, 0, gs), UDim2.new(0.5,0, 1,0), Vector2.new(0.5,1), 0, 1)
+CreateResizeHandle("R_L", UDim2.new(0, gs, 1, -gs*4), UDim2.new(0,0, 0.5,0), Vector2.new(0,0.5), -1, 0)
+CreateResizeHandle("R_R", UDim2.new(0, gs, 1, -gs*4), UDim2.new(1,0, 0.5,0), Vector2.new(1,0.5), 1, 0)
+
 local function SetupDrag(triggerFrame)
     local dragBegan = triggerFrame.InputBegan:Connect(function(input)
+        if isResizingWindow then return end 
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             isDraggingWindow = true
             hasDragged = false
@@ -1008,7 +1052,36 @@ SetupDrag(FloatingBall)
 SetupDrag(BottomDragBar)
 
 local dragChanged = UserInputService.InputChanged:Connect(function(input)
-    if isDraggingWindow and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+    if isResizingWindow and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - resizeInputPoint
+        
+        local newW = resizeStartSize.X
+        local newH = resizeStartSize.Y
+        local offsetX = 0
+        local offsetY = 0
+
+        if resizeDirX == 1 then
+            newW = math.clamp(resizeStartSize.X + delta.X, 260, 800)
+            offsetX = (newW - resizeStartSize.X) / 2
+        elseif resizeDirX == -1 then
+            newW = math.clamp(resizeStartSize.X - delta.X, 260, 800)
+            offsetX = -(newW - resizeStartSize.X) / 2
+        end
+
+        if resizeDirY == 1 then
+            newH = math.clamp(resizeStartSize.Y + delta.Y, 250, 800)
+            offsetY = (newH - resizeStartSize.Y) / 2
+        elseif resizeDirY == -1 then
+            newH = math.clamp(resizeStartSize.Y - delta.Y, 250, 800)
+            offsetY = -(newH - resizeStartSize.Y) / 2
+        end
+
+        MainFrame.Size = UDim2.new(0, newW, 0, newH)
+        MainFrame.Position = UDim2.new(0, resizeStartPos.X.Offset + offsetX, 0, resizeStartPos.Y.Offset + offsetY)
+        WindowWidth = newW
+        WindowHeight = newH
+
+    elseif isDraggingWindow and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragInputPoint
         if delta.Magnitude > 3 then
             hasDragged = true
@@ -1037,6 +1110,7 @@ table.insert(ScriptConnections, dragChanged)
 local dragEnded = UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
         isDraggingWindow = false 
+        isResizingWindow = false
     end
 end)
 table.insert(ScriptConnections, dragEnded)
