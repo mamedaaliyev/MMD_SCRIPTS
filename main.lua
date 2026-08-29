@@ -24,7 +24,7 @@ else
         local test = TargetGuiParent.Name
     end)
     if not success or not TargetGuiParent then
-        TargetGuiParent = LocalPlayer:WaitForChild("PlayerGui")
+        TargetGuiParent = LocalPlayer:WaitForChild("PlayerGui", 5) or CoreGui
     end
 end
 
@@ -64,16 +64,10 @@ local CheatSettings = {
     FovTransparency = 0,
     
     EspEnabled = false,
-    EspEnemies = true,
-    EspEnemyHue = 0.0,
-    EspEnemySat = 100,
-    EspEnemyVal = 100,
-    EspEnemyTransp = 0,
-    EspAllies = false,
-    EspAllyHue = 0.6,
-    EspAllySat = 100,
-    EspAllyVal = 100,
-    EspAllyTransp = 0
+    EspHue = 0.0,
+    EspSat = 100,
+    EspVal = 100,
+    EspTransp = 0
 }
 
 local function SaveSettings()
@@ -124,6 +118,12 @@ end))
 
 local function IsAimKeyPressed()
     if CheatSettings.AimbotMode == "Always" then return true end
+    local success, isDown = pcall(function()
+        return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+    end)
+    if success then
+        return isDown
+    end
     return IsRightMousePressed
 end
 
@@ -131,12 +131,17 @@ local CurrentAccentColor = Color3.fromHSV(CheatSettings.MenuHue, CheatSettings.M
 local DynamicUIElements = {
     Backgrounds = {},
     Strokes = {},
-    Texts = {}
+    Texts = {},
+    Gradients = {} 
 }
 
 local UITheme = {
     Background = Color3.fromRGB(15, 15, 17),
+    Background1 = Color3.fromRGB(16, 16, 20),
+    Background2 = Color3.fromRGB(38, 38, 46),
     Header = Color3.fromRGB(22, 22, 25),
+    Header1 = Color3.fromRGB(20, 20, 26),
+    Header2 = Color3.fromRGB(34, 34, 42),
     Container = Color3.fromRGB(30, 30, 35),
     Text = Color3.fromRGB(240, 240, 240),
     TextDim = Color3.fromRGB(150, 150, 160),
@@ -193,7 +198,7 @@ local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 0, 0, 0)
 MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MainFrame.BackgroundColor3 = UITheme.Background
+MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.Active = true
@@ -204,6 +209,14 @@ local MainFrameCorner = Instance.new("UICorner")
 MainFrameCorner.CornerRadius = UDim.new(0, 10)
 MainFrameCorner.Parent = MainFrame
 
+local MainBgGradient = Instance.new("UIGradient")
+MainBgGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, UITheme.Background1),
+    ColorSequenceKeypoint.new(1, UITheme.Background2)
+})
+MainBgGradient.Parent = MainFrame
+table.insert(AnimatedGradients, MainBgGradient)
+
 local MainStroke = Instance.new("UIStroke")
 MainStroke.Thickness = 1.5
 MainStroke.Color = CurrentAccentColor
@@ -213,13 +226,21 @@ table.insert(DynamicUIElements.Strokes, MainStroke)
 
 local TopBar = Instance.new("Frame")
 TopBar.Size = UDim2.new(1, 0, 0, 40)
-TopBar.BackgroundColor3 = UITheme.Header
+TopBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 TopBar.BorderSizePixel = 0
 TopBar.Parent = MainFrame
 
 local TopBarCorner = Instance.new("UICorner")
 TopBarCorner.CornerRadius = UDim.new(0, 10)
 TopBarCorner.Parent = TopBar
+
+local TopBarGradient = Instance.new("UIGradient")
+TopBarGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, UITheme.Header1),
+    ColorSequenceKeypoint.new(1, UITheme.Header2)
+})
+TopBarGradient.Parent = TopBar
+table.insert(AnimatedGradients, TopBarGradient)
 
 local TopBarDivider = Instance.new("Frame")
 TopBarDivider.Size = UDim2.new(1, 0, 0, 1)
@@ -259,17 +280,17 @@ MinimizeCorner.Parent = MinimizeButton
 local TabBar = Instance.new("ScrollingFrame")
 TabBar.Size = UDim2.new(1, 0, 0, 35)
 TabBar.Position = UDim2.new(0, 0, 0, 40)
-TabBar.BackgroundColor3 = UITheme.Header
+TabBar.BackgroundTransparency = 1
 TabBar.BorderSizePixel = 0
 TabBar.ScrollBarThickness = 0
 TabBar.ScrollingDirection = Enum.ScrollingDirection.X
-TabBar.AutomaticCanvasSize = Enum.AutomaticSize.X
-TabBar.CanvasSize = UDim2.new(0, 0, 0, 0)
+TabBar.AutomaticCanvasSize = Enum.AutomaticSize.None
+TabBar.CanvasSize = UDim2.new(0, 400, 0, 0)
 TabBar.Parent = MainFrame
 
 local TabPadding = Instance.new("UIPadding")
-TabPadding.PaddingLeft = UDim.new(0, 15)
-TabPadding.PaddingRight = UDim.new(0, 15)
+TabPadding.PaddingLeft = UDim.new(0, 8)
+TabPadding.PaddingRight = UDim.new(0, 8)
 TabPadding.Parent = TabBar
 
 local TabLayout = Instance.new("UIListLayout")
@@ -277,8 +298,10 @@ TabLayout.FillDirection = Enum.FillDirection.Horizontal
 TabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 TabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabLayout.Padding = UDim.new(0, 15)
+TabLayout.Padding = UDim.new(0, 6)
 TabLayout.Parent = TabBar
+
+table.insert(ScrollFrames, {frame = TabBar, layout = TabLayout, axis = "X"})
 
 local TabDivider = Instance.new("Frame")
 TabDivider.Size = UDim2.new(1, 0, 0, 1)
@@ -301,12 +324,20 @@ local FloatingBall = Instance.new("TextButton")
 FloatingBall.Size = UDim2.new(0, 0, 0, 0)
 FloatingBall.Position = UDim2.new(0.5, 0, 0.5, 0)
 FloatingBall.AnchorPoint = Vector2.new(0.5, 0.5)
-FloatingBall.BackgroundColor3 = UITheme.Header
+FloatingBall.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 FloatingBall.BorderSizePixel = 0
 FloatingBall.Visible = false
 FloatingBall.Text = ""
 FloatingBall.ZIndex = 999
 FloatingBall.Parent = MainGui
+
+local FloatingBallGradient = Instance.new("UIGradient")
+FloatingBallGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, UITheme.Header1),
+    ColorSequenceKeypoint.new(1, UITheme.Header2)
+})
+FloatingBallGradient.Parent = FloatingBall
+table.insert(AnimatedGradients, FloatingBallGradient)
 
 local FloatingBallCorner = Instance.new("UICorner")
 FloatingBallCorner.CornerRadius = UDim.new(1, 0)
@@ -376,7 +407,7 @@ local ActiveTabButton = nil
 
 local function CreateTabButton(text, targetScroll, order)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 95, 1, 0)
+    btn.Size = UDim2.new(0, 85, 1, 0)
     btn.BackgroundTransparency = 1
     btn.Text = text
     btn.Font = Enum.Font.Code
@@ -403,11 +434,16 @@ local function CreateTabButton(text, targetScroll, order)
 
     btn.MouseButton1Click:Connect(function()
         if ActiveTabButton == btn then return end
+        
         for i, v in ipairs(DynamicUIElements.Texts) do
             if v == ActiveTabButton then table.remove(DynamicUIElements.Texts, i) break end
         end
-        ActiveTabButton.TextColor3 = UITheme.TextDim
-        CreateTween(ActiveTabButton:FindFirstChild("Frame"), {Size = UDim2.new(0, 0, 0, 2)}, 0.3)
+        
+        if ActiveTabButton then
+            ActiveTabButton.TextColor3 = UITheme.TextDim
+            CreateTween(ActiveTabButton:FindFirstChild("Frame"), {Size = UDim2.new(0, 0, 0, 2)}, 0.3)
+        end
+        
         ActiveTabButton = btn
         btn.TextColor3 = CurrentAccentColor
         table.insert(DynamicUIElements.Texts, btn)
@@ -438,6 +474,18 @@ table.insert(ScriptConnections, RunService.RenderStepped:Connect(function()
     end
 end))
 
+local function ApplyGradient(instance)
+    local grad = Instance.new("UIGradient")
+    local darker = Color3.fromRGB(math.max(CurrentAccentColor.R*255 - 40, 0), math.max(CurrentAccentColor.G*255 - 40, 0), math.max(CurrentAccentColor.B*255 - 40, 0))
+    grad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, CurrentAccentColor),
+        ColorSequenceKeypoint.new(1, darker)
+    })
+    grad.Rotation = 90
+    grad.Parent = instance
+    table.insert(DynamicUIElements.Gradients, grad)
+end
+
 local function UpdateUIColors()
     CurrentAccentColor = Color3.fromHSV(CheatSettings.MenuHue, CheatSettings.MenuSat / 100, CheatSettings.MenuVal / 100)
     for _, obj in pairs(DynamicUIElements.Backgrounds) do
@@ -448,6 +496,17 @@ local function UpdateUIColors()
     end
     for _, obj in pairs(DynamicUIElements.Texts) do
         if obj and obj.Parent then obj.TextColor3 = CurrentAccentColor end
+    end
+    if DynamicUIElements.Gradients then
+        for _, grad in pairs(DynamicUIElements.Gradients) do
+            if grad and grad.Parent then
+                local darker = Color3.fromRGB(math.max(CurrentAccentColor.R*255 - 40, 0), math.max(CurrentAccentColor.G*255 - 40, 0), math.max(CurrentAccentColor.B*255 - 40, 0))
+                grad.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, CurrentAccentColor),
+                    ColorSequenceKeypoint.new(1, darker)
+                })
+            end
+        end
     end
 end
 
@@ -465,6 +524,9 @@ local function CreateToggle(parent, titleText, settingKey, colorOff, order, call
     button.LayoutOrder = order
     button.Parent = parent
 
+    ApplyGradient(button)
+    local gradCache = button:FindFirstChildOfClass("UIGradient")
+    
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = button
@@ -480,14 +542,17 @@ local function CreateToggle(parent, titleText, settingKey, colorOff, order, call
     local function updateUI()
         local state = CheatSettings[settingKey]
         label.Text = titleText .. "  " .. (state and "ON" or "OFF")
+        
         if state then
             local found = false
             for _,v in ipairs(DynamicUIElements.Backgrounds) do if v == button then found = true break end end
             if not found then table.insert(DynamicUIElements.Backgrounds, button) end
             button.BackgroundColor3 = CurrentAccentColor
+            if gradCache then gradCache.Enabled = true end
         else
             for i,v in ipairs(DynamicUIElements.Backgrounds) do if v == button then table.remove(DynamicUIElements.Backgrounds, i) break end end
             button.BackgroundColor3 = colorOff
+            if gradCache then gradCache.Enabled = false end
         end
     end
     table.insert(UIUpdaters, updateUI)
@@ -511,6 +576,10 @@ local function CreateModeToggle(parent, titleText, settingKey, modes, order, cal
     button.LayoutOrder = order
     button.Parent = parent
 
+    ApplyGradient(button)
+    local gradCache = button:FindFirstChildOfClass("UIGradient")
+    if gradCache then gradCache.Enabled = false end
+    
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = button
@@ -551,6 +620,10 @@ local function CreateAction(parent, titleText, colorOff, order, callback)
     button.LayoutOrder = order
     button.Parent = parent
 
+    ApplyGradient(button)
+    local gradCache = button:FindFirstChildOfClass("UIGradient")
+    if gradCache then gradCache.Enabled = false end
+    
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = button
@@ -607,6 +680,7 @@ local function CreateSlider(parent, labelTitle, settingKey, minVal, maxVal, orde
     sFill.Parent = sBg
     Instance.new("UICorner", sFill).CornerRadius = UDim.new(1, 0)
     table.insert(DynamicUIElements.Backgrounds, sFill)
+    ApplyGradient(sFill)
 
     local knob = Instance.new("Frame")
     knob.Size = UDim2.new(0, 14, 0, 14)
@@ -634,23 +708,29 @@ local function CreateSlider(parent, labelTitle, settingKey, minVal, maxVal, orde
         updateUI()
     end
 
-    container.InputBegan:Connect(function(input)
+    local inputBeganConn = container.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             isDragging = true 
             Update(input.Position.X)
         end
     end)
-    UserInputService.InputChanged:Connect(function(input)
+    table.insert(ScriptConnections, inputBeganConn)
+    
+    local inputChangedConn = UserInputService.InputChanged:Connect(function(input)
         if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             Update(UserInputService:GetMouseLocation().X)
         end
     end)
-    UserInputService.InputEnded:Connect(function(input)
+    table.insert(ScriptConnections, inputChangedConn)
+    
+    local inputEndedConn = UserInputService.InputEnded:Connect(function(input)
         if isDragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
             isDragging = false 
             SaveSettings()
         end
     end)
+    table.insert(ScriptConnections, inputEndedConn)
+    
     return container
 end
 
@@ -745,6 +825,7 @@ local function CreateHueMenu(parent, titleText, order, hueKey, satKey, valKey, a
             fl.Parent = b
             Instance.new("UICorner", fl).CornerRadius = UDim.new(1, 0)
             table.insert(DynamicUIElements.Backgrounds, fl)
+            ApplyGradient(fl)
         end
 
         local k = Instance.new("Frame", b)
@@ -782,22 +863,27 @@ local function CreateHueMenu(parent, titleText, order, hueKey, satKey, valKey, a
             end
         end
         
-        f.InputBegan:Connect(function(ip) 
+        local fInputBegan = f.InputBegan:Connect(function(ip) 
             if ip.UserInputType == Enum.UserInputType.MouseButton1 or ip.UserInputType == Enum.UserInputType.Touch then 
                 d = true mv(ip.Position.X) 
             end 
         end)
-        UserInputService.InputChanged:Connect(function(ip) 
+        table.insert(ScriptConnections, fInputBegan)
+        
+        local uiInputChanged = UserInputService.InputChanged:Connect(function(ip) 
             if d and (ip.UserInputType == Enum.UserInputType.MouseMovement or ip.UserInputType == Enum.UserInputType.Touch) then 
                 mv(UserInputService:GetMouseLocation().X) 
             end 
         end)
-        UserInputService.InputEnded:Connect(function(ip) 
+        table.insert(ScriptConnections, uiInputChanged)
+        
+        local uiInputEnded = UserInputService.InputEnded:Connect(function(ip) 
             if d and (ip.UserInputType == Enum.UserInputType.MouseButton1 or ip.UserInputType == Enum.UserInputType.Touch) then 
                 d = false 
                 SaveSettings() 
             end 
         end)
+        table.insert(ScriptConnections, uiInputEnded)
     end
     
     makeSingleSlider("Color (Hue)", 1, "Hue", hueKey)
@@ -807,35 +893,17 @@ local function CreateHueMenu(parent, titleText, order, hueKey, satKey, valKey, a
     return wrap
 end
 
-local SliderFovRadius, MenuFovColor
-local BtnEspEnemy, MenuEspEnemy
-local BtnEspAlly, MenuEspAlly
-
-local function UpdateMenuVisibility()
-    if SliderFovRadius then SliderFovRadius.Visible = CheatSettings.AimbotEnabled or CheatSettings.FovVisible end
-    if MenuFovColor then MenuFovColor.Visible = CheatSettings.FovVisible end
-    if BtnEspEnemy then BtnEspEnemy.Visible = CheatSettings.EspEnabled end
-    if MenuEspEnemy then MenuEspEnemy.Visible = CheatSettings.EspEnabled end
-    if BtnEspAlly then BtnEspAlly.Visible = CheatSettings.EspEnabled end
-    if MenuEspAlly then MenuEspAlly.Visible = CheatSettings.EspEnabled end
-end
-table.insert(UIUpdaters, UpdateMenuVisibility)
-
-CreateToggle(TabAimbot, "[ AIMBOT ]", "AimbotEnabled", UITheme.Red, 1, UpdateMenuVisibility)
+CreateToggle(TabAimbot, "[ AIMBOT ]", "AimbotEnabled", UITheme.Red, 1)
 CreateModeToggle(TabAimbot, "[ AIM MODE ]", "AimbotMode", {"Always", "On RMB"}, 2)
 CreateToggle(TabAimbot, "[ TEAM CHECK ]", "TeamCheck", UITheme.Red, 3)
 CreateSlider(TabAimbot, "Head Chance %", "HeadChance", 0, 100, 4)
 CreateSlider(TabAimbot, "Max Distance", "MaxDistance", 0, 5000, 5)
+CreateToggle(TabAimbot, "[ FOV CIRCLE ]", "FovVisible", UITheme.Red, 6)
+CreateSlider(TabAimbot, "FOV Radius", "FovRadius", 0, 1000, 7)
+CreateHueMenu(TabAimbot, "FOV Options", 8, "FovHue", "FovSat", "FovVal", "FovTransparency")
 
-CreateToggle(TabAimbot, "[ FOV CIRCLE ]", "FovVisible", UITheme.Red, 6, UpdateMenuVisibility)
-SliderFovRadius = CreateSlider(TabAimbot, "FOV Radius", "FovRadius", 0, 1000, 7)
-MenuFovColor = CreateHueMenu(TabAimbot, "FOV Options", 8, "FovHue", "FovSat", "FovVal", "FovTransparency")
-
-CreateToggle(TabEsp, "[ ESP ]", "EspEnabled", UITheme.Red, 1, UpdateMenuVisibility)
-BtnEspEnemy, _ = CreateToggle(TabEsp, "[ ENEMIES ESP ]", "EspEnemies", UITheme.Red, 2)
-MenuEspEnemy = CreateHueMenu(TabEsp, "Enemies Color", 3, "EspEnemyHue", "EspEnemySat", "EspEnemyVal", "EspEnemyTransp")
-BtnEspAlly, _ = CreateToggle(TabEsp, "[ ALLIES ESP ]", "EspAllies", UITheme.Red, 4)
-MenuEspAlly = CreateHueMenu(TabEsp, "Allies Color", 5, "EspAllyHue", "EspAllySat", "EspAllyVal", "EspAllyTransp")
+CreateToggle(TabEsp, "[ ESP ]", "EspEnabled", UITheme.Red, 1)
+CreateHueMenu(TabEsp, "ESP Color", 2, "EspHue", "EspSat", "EspVal", "EspTransp")
 
 CreateHueMenu(TabSettings, "UI Accent Color", 1, "MenuHue", "MenuSat", "MenuVal", nil)
 
@@ -863,26 +931,20 @@ end)
 CreateAction(TabSettings, "[ RESET SETTINGS ]", UITheme.DarkRed, 3, function(btn, lbl)
     CheatSettings.AimbotEnabled = false
     CheatSettings.AimbotMode = "Always"
-    CheatSettings.TeamCheck = false
-    CheatSettings.HeadChance = 0
-    CheatSettings.MaxDistance = 0
-    CheatSettings.FovVisible = false
-    CheatSettings.FovRadius = 0
+    CheatSettings.TeamCheck = true
+    CheatSettings.HeadChance = 100
+    CheatSettings.MaxDistance = 1000
+    CheatSettings.FovVisible = true
+    CheatSettings.FovRadius = 150
     CheatSettings.FovHue = 0.33
     CheatSettings.FovSat = 100
     CheatSettings.FovVal = 100
     CheatSettings.FovTransparency = 0
     CheatSettings.EspEnabled = false
-    CheatSettings.EspEnemies = false
-    CheatSettings.EspEnemyHue = 0.0
-    CheatSettings.EspEnemySat = 100
-    CheatSettings.EspEnemyVal = 100
-    CheatSettings.EspEnemyTransp = 0
-    CheatSettings.EspAllies = false
-    CheatSettings.EspAllyHue = 0.6
-    CheatSettings.EspAllySat = 100
-    CheatSettings.EspAllyVal = 100
-    CheatSettings.EspAllyTransp = 0
+    CheatSettings.EspHue = 0.0
+    CheatSettings.EspSat = 100
+    CheatSettings.EspVal = 100
+    CheatSettings.EspTransp = 0
     CheatSettings.MenuHue = 0.33
     CheatSettings.MenuSat = 100
     CheatSettings.MenuVal = 100
@@ -1029,16 +1091,15 @@ end)
 table.insert(ScriptConnections, panicConn)
 
 local function IsTeammate(player)
-    if not CheatSettings.TeamCheck then 
-        return false 
-    end
-    
     if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then 
         return true 
     end
     
     local success, isSameColor = pcall(function()
-        return player.TeamColor == LocalPlayer.TeamColor
+        if player.TeamColor ~= BrickColor.new("White") or player.Team ~= nil then
+            return player.TeamColor == LocalPlayer.TeamColor
+        end
+        return false
     end)
     if success and isSameColor then
         return true
@@ -1046,18 +1107,36 @@ local function IsTeammate(player)
     
     local isCustomTeam = false
     pcall(function()
-        local myTeamVal = LocalPlayer:FindFirstChild("Team") or LocalPlayer:FindFirstChild("Role") or LocalPlayer:FindFirstChild("group") or LocalPlayer:FindFirstChild("TeamColor")
-        local enemyTeamVal = player:FindFirstChild("Team") or player:FindFirstChild("Role") or player:FindFirstChild("group") or player:FindFirstChild("TeamColor")
-        
-        if myTeamVal and enemyTeamVal and myTeamVal.Value ~= nil and myTeamVal.Value == enemyTeamVal.Value then
-            isCustomTeam = true
+        local teamKeys = {"Team", "Role", "Group", "Faction", "TeamColor", "Crew"}
+        for _, key in ipairs(teamKeys) do
+            local myVal = LocalPlayer:FindFirstChild(key) or LocalPlayer:FindFirstChild(string.lower(key))
+            local enemyVal = player:FindFirstChild(key) or player:FindFirstChild(string.lower(key))
+            
+            if myVal and enemyVal and myVal:IsA("ValueBase") and enemyVal:IsA("ValueBase") then
+                if myVal.Value ~= nil and myVal.Value ~= "" and myVal.Value == enemyVal.Value then
+                    isCustomTeam = true
+                    break
+                end
+            end
+        end
+
+        if not isCustomTeam and LocalPlayer.Character and player.Character then
+            local charKeys = {"Team", "Role", "Group", "Faction", "TeamColor", "Crew"}
+            for _, key in ipairs(charKeys) do
+                local myVal = LocalPlayer.Character:FindFirstChild(key) or LocalPlayer.Character:FindFirstChild(string.lower(key))
+                local enemyVal = player.Character:FindFirstChild(key) or player.Character:FindFirstChild(string.lower(key))
+                
+                if myVal and enemyVal and myVal:IsA("ValueBase") and enemyVal:IsA("ValueBase") then
+                    if myVal.Value ~= nil and myVal.Value ~= "" and myVal.Value == enemyVal.Value then
+                        isCustomTeam = true
+                        break
+                    end
+                end
+            end
         end
     end)
-    if isCustomTeam then 
-        return true 
-    end
     
-    return false
+    return isCustomTeam
 end
 
 local FovScreenGui = Instance.new("ScreenGui")
@@ -1117,7 +1196,7 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
     if not IsCheatLoaded then
         FovCircle.Visible = false
         for _, espData in pairs(EspInstances) do 
-            if espData.box then espData.box.Visible = false end 
+            if espData and espData.box then espData.box.Visible = false end 
         end
         return
     end
@@ -1138,7 +1217,13 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
         
         if CheatSettings.EspEnabled and rootPart and humanoid and humanoid.Health > 0 then
             local isTeam = IsTeammate(player)
-            local shouldShow = (isTeam and CheatSettings.EspAllies) or (not isTeam and CheatSettings.EspEnemies)
+            local shouldShow = false
+            
+            if CheatSettings.TeamCheck then
+                shouldShow = not isTeam
+            else
+                shouldShow = true
+            end
             
             if shouldShow then
                 local distance = (rootPart.Position - Camera.CFrame.Position).Magnitude
@@ -1148,14 +1233,8 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
                         espData.box.Size = Vector2.new(14, 14)
                         espData.box.Position = Vector2.new(screenPosition.X - 7, screenPosition.Y - 7)
                         
-                        if isTeam then
-                            espData.box.Color = Color3.fromHSV(CheatSettings.EspAllyHue, CheatSettings.EspAllySat / 100, CheatSettings.EspAllyVal / 100)
-                            espData.box.Transparency = CheatSettings.EspAllyTransp / 100
-                        else
-                            espData.box.Color = Color3.fromHSV(CheatSettings.EspEnemyHue, CheatSettings.EspEnemySat / 100, CheatSettings.EspEnemyVal / 100)
-                            espData.box.Transparency = CheatSettings.EspEnemyTransp / 100
-                        end
-                        
+                        espData.box.Color = Color3.fromHSV(CheatSettings.EspHue, CheatSettings.EspSat / 100, CheatSettings.EspVal / 100)
+                        espData.box.Transparency = 1 - (CheatSettings.EspTransp / 100)
                         espData.box.Visible = true
                     else
                         espData.box.Visible = false
@@ -1167,7 +1246,7 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
                 espData.box.Visible = false
             end
         else
-            espData.box.Visible = false
+            if espData and espData.box then espData.box.Visible = false end
         end
     end
 end)
@@ -1192,7 +1271,9 @@ local function FetchOptimalTarget()
                 local dist = (head.Position - Camera.CFrame.Position).Magnitude
                 if dist <= CheatSettings.MaxDistance then
                     local rayParams = RaycastParams.new()
-                    rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+                    if LocalPlayer.Character then
+                        rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+                    end
                     rayParams.FilterType = Enum.RaycastFilterType.Blacklist
                     
                     local origin = Camera.CFrame.Position
@@ -1236,9 +1317,8 @@ local aimbotRenderConn = RunService.RenderStepped:Connect(function()
     local foundTarget = FetchOptimalTarget()
     
     if foundTarget then
-        if foundTarget ~= activeTarget then
-            activeTarget = foundTarget
-            
+        activeTarget = foundTarget
+        if foundTarget.Character then
             local randomRoll = math.random(1, 100)
             if randomRoll <= CheatSettings.HeadChance then
                 activeBodyPart = foundTarget.Character:FindFirstChild("Head")
@@ -1247,6 +1327,8 @@ local aimbotRenderConn = RunService.RenderStepped:Connect(function()
                               or foundTarget.Character:FindFirstChild("Torso") 
                               or foundTarget.Character:FindFirstChild("Head")
             end
+        else
+            activeBodyPart = nil
         end
         
         if activeBodyPart and activeBodyPart.Parent then 
@@ -1287,24 +1369,35 @@ task.spawn(function()
     end
     
     local animTime = 0
-    local rgbConnection
+    local bgGradientConn = RunService.RenderStepped:Connect(function(dt)
+        animTime = animTime + dt
+        for _, grad in pairs(AnimatedGradients) do
+            if grad and grad.Parent then
+                grad.Rotation = (animTime * 45) % 360
+            end
+        end
+    end)
+    table.insert(ScriptConnections, bgGradientConn)
     
     CreateTween(LoadingContainer, {BackgroundTransparency = 0.2}, 0.5)
     task.wait(0.2)
     
     CreateTween(WaveFrame, {Position = UDim2.new(0.5, 0, 0.5, 0)}, 1.2, Enum.EasingStyle.Quart)
     
-    rgbConnection = RunService.RenderStepped:Connect(function(dt)
-        animTime = animTime + (dt * 3)
+    local waveTime = 0
+    local textAnimConn = RunService.RenderStepped:Connect(function(dt)
+        waveTime = waveTime + (dt * 3)
         for i, lbl in ipairs(letterLabels) do
-            local waveOffset = math.sin(animTime + (i * 0.4)) * 12
-            lbl.Position = UDim2.new(0, 0, 0, waveOffset)
-            local colorPhase = (math.sin(animTime * 1.5 - (i * 0.2)) + 1) / 2
-            lbl.TextColor3 = Color3.fromRGB(
-                math.floor(colorPhase * 50),
-                math.floor(100 + colorPhase * 155),
-                255
-            )
+            if lbl and lbl.Parent then
+                local waveOffset = math.sin(waveTime + (i * 0.4)) * 12
+                lbl.Position = UDim2.new(0, 0, 0, waveOffset)
+                local colorPhase = (math.sin(waveTime * 1.5 - (i * 0.2)) + 1) / 2
+                lbl.TextColor3 = Color3.fromRGB(
+                    math.floor(colorPhase * 50),
+                    math.floor(100 + colorPhase * 155),
+                    255
+                )
+            end
         end
     end)
 
@@ -1323,7 +1416,8 @@ task.spawn(function()
     end
     
     task.wait(0.5)
-    if rgbConnection then rgbConnection:Disconnect() end
+    if textAnimConn then textAnimConn:Disconnect() end
+    
     CreateTween(LoadingContainer, {BackgroundTransparency = 1}, 0.5).Completed:Connect(function()
         LoadingContainer:Destroy()
         
@@ -1342,7 +1436,7 @@ getgenv().mmd_scripts_cheat.Destroy = function()
     if MainGui then MainGui:Destroy() end
     if FovScreenGui then FovScreenGui:Destroy() end
     for _, espData in pairs(EspInstances) do 
-        if espData.box then 
+        if espData and espData.box then 
             pcall(function() espData.box:Remove() end)
         end 
     end
