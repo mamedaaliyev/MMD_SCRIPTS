@@ -40,6 +40,7 @@ local UIUpdaters = {}
 local ConfigPath = "mmd_scripts_settings.json"
 local CheatSettings = {
     MenuHue = 0.33,
+    MenuSat = 100,
     MenuVal = 100,
     PanicKey = "Insert",
     
@@ -52,16 +53,19 @@ local CheatSettings = {
     FovVisible = true,
     FovRadius = 150,
     FovHue = 0.33,
+    FovSat = 100,
     FovVal = 100,
     FovTransparency = 0,
     
     EspEnabled = false,
     EspEnemies = true,
     EspEnemyHue = 0.0,
+    EspEnemySat = 100,
     EspEnemyVal = 100,
     EspEnemyTransp = 0,
     EspAllies = false,
     EspAllyHue = 0.6,
+    EspAllySat = 100,
     EspAllyVal = 100,
     EspAllyTransp = 0
 }
@@ -103,7 +107,7 @@ table.insert(ScriptConnections, Mouse.Button2Up:Connect(function()
     IsRightMousePressed = false
 end))
 
-local CurrentAccentColor = Color3.fromHSV(CheatSettings.MenuHue, 1, CheatSettings.MenuVal / 100)
+local CurrentAccentColor = Color3.fromHSV(CheatSettings.MenuHue, CheatSettings.MenuSat / 100, CheatSettings.MenuVal / 100)
 local DynamicUIElements = {
     Backgrounds = {},
     Strokes = {},
@@ -111,18 +115,18 @@ local DynamicUIElements = {
 }
 
 local UITheme = {
-    Background = Color3.fromRGB(20, 20, 20),
-    Header = Color3.fromRGB(30, 30, 30),
-    Container = Color3.fromRGB(40, 40, 40),
-    Text = Color3.fromRGB(230, 230, 230),
-    TextDim = Color3.fromRGB(160, 160, 160),
-    Red = Color3.fromRGB(255, 70, 70),
-    DarkRed = Color3.fromRGB(150, 40, 40)
+    Background = Color3.fromRGB(15, 15, 17),
+    Header = Color3.fromRGB(22, 22, 25),
+    Container = Color3.fromRGB(30, 30, 35),
+    Text = Color3.fromRGB(240, 240, 240),
+    TextDim = Color3.fromRGB(150, 150, 160),
+    Red = Color3.fromRGB(255, 60, 60),
+    DarkRed = Color3.fromRGB(180, 40, 40)
 }
 
 local function CreateTween(instance, properties, duration, style)
     local tweenInfo = TweenInfo.new(
-        duration or 0.4,
+        duration or 0.35,
         style or Enum.EasingStyle.Quart,
         Enum.EasingDirection.Out
     )
@@ -177,7 +181,7 @@ MainFrame.Visible = false
 MainFrame.Parent = MainGui
 
 local MainFrameCorner = Instance.new("UICorner")
-MainFrameCorner.CornerRadius = UDim.new(0, 12)
+MainFrameCorner.CornerRadius = UDim.new(0, 10)
 MainFrameCorner.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
@@ -194,7 +198,7 @@ TopBar.BorderSizePixel = 0
 TopBar.Parent = MainFrame
 
 local TopBarCorner = Instance.new("UICorner")
-TopBarCorner.CornerRadius = UDim.new(0, 12)
+TopBarCorner.CornerRadius = UDim.new(0, 10)
 TopBarCorner.Parent = TopBar
 
 local TopBarDivider = Instance.new("Frame")
@@ -320,8 +324,7 @@ local function CreateTabScroll(name)
     scroll.BorderSizePixel = 0
     scroll.ScrollBarThickness = 2
     scroll.ScrollBarImageColor3 = UITheme.Container
-    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scroll.AutomaticCanvasSize = Enum.AutomaticSize.None
     scroll.Visible = false
     scroll.Parent = ContentContainer
 
@@ -337,6 +340,10 @@ local function CreateTabScroll(name)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Parent = scroll
+
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 25)
+    end)
 
     return scroll
 end
@@ -405,7 +412,7 @@ CreateTabButton("SETTINGS", TabSettings, 3)
 CreateTabButton("ABOUT US", TabAbout, 4)
 
 local function UpdateUIColors()
-    CurrentAccentColor = Color3.fromHSV(CheatSettings.MenuHue, 1, CheatSettings.MenuVal / 100)
+    CurrentAccentColor = Color3.fromHSV(CheatSettings.MenuHue, CheatSettings.MenuSat / 100, CheatSettings.MenuVal / 100)
     for _, obj in pairs(DynamicUIElements.Backgrounds) do
         if obj and obj.Parent then obj.BackgroundColor3 = CurrentAccentColor end
     end
@@ -622,10 +629,11 @@ local function CreateSlider(parent, labelTitle, settingKey, minVal, maxVal, orde
     return container
 end
 
-local function CreateHueMenu(parent, titleText, order, hueKey, valKey, alphaKey)
+local function CreateColorMenu(parent, titleText, order, hueKey, satKey, valKey, alphaKey)
     local wrap = Instance.new("Frame")
     
     local sliderCount = 1
+    if satKey then sliderCount = sliderCount + 1 end
     if valKey then sliderCount = sliderCount + 1 end
     if alphaKey then sliderCount = sliderCount + 1 end
     local expandedHeight = 36 + (sliderCount * 45) + 10
@@ -701,7 +709,7 @@ local function CreateHueMenu(parent, titleText, order, hueKey, valKey, alphaKey)
                 ColorSequenceKeypoint.new(1, Color3.fromHSV(1, 1, 1))
             })
             b.BackgroundColor3 = Color3.new(1, 1, 1)
-        elseif sliderType == "Val" then
+        elseif sliderType == "Sat" or sliderType == "Val" then
             fl = Instance.new("Frame", b)
             fl.BackgroundColor3 = UITheme.Text
             fl.Parent = b
@@ -727,10 +735,7 @@ local function CreateHueMenu(parent, titleText, order, hueKey, valKey, alphaKey)
             if sliderType == "Hue" then
                 k.BackgroundColor3 = Color3.fromHSV(r, 1, 1)
                 t.Text = lbl
-            elseif sliderType == "Val" then
-                if fl then fl.Size = UDim2.new(r, 0, 1, 0) end
-                t.Text = lbl .. ": " .. val .. "%"
-            elseif sliderType == "Alpha" then
+            else
                 if fl then fl.Size = UDim2.new(r, 0, 1, 0) end
                 t.Text = lbl .. ": " .. val .. "%"
             end
@@ -746,6 +751,10 @@ local function CreateHueMenu(parent, titleText, order, hueKey, valKey, alphaKey)
             local r = math.clamp((x - ap) / as, 0, 1)
             CheatSettings[settingKey] = (sliderType == "Hue") and r or math.floor(r * maxVal)
             updateUI()
+            
+            if settingKey == "MenuHue" or settingKey == "MenuSat" or settingKey == "MenuVal" then 
+                TriggerUpdaters() 
+            end
         end
         
         f.InputBegan:Connect(function(ip) 
@@ -762,52 +771,34 @@ local function CreateHueMenu(parent, titleText, order, hueKey, valKey, alphaKey)
             if d and (ip.UserInputType == Enum.UserInputType.MouseButton1 or ip.UserInputType == Enum.UserInputType.Touch) then 
                 d = false 
                 SaveSettings() 
-                if hueKey == "MenuHue" or valKey == "MenuVal" then UpdateUIColors() end
             end 
         end)
     end
     
     makeSingleSlider("Color (Hue)", 1, "Hue", hueKey)
-    if valKey then
-        makeSingleSlider("Brightness (0=Black)", 100, "Val", valKey)
-    end
-    if alphaKey then
-        makeSingleSlider("Transparency", 100, "Alpha", alphaKey)
-    end
+    if satKey then makeSingleSlider("Saturation (0=White)", 100, "Sat", satKey) end
+    if valKey then makeSingleSlider("Brightness (0=Black)", 100, "Val", valKey) end
+    if alphaKey then makeSingleSlider("Transparency", 100, "Alpha", alphaKey) end
     return wrap
 end
 
-local SliderFovRadius, MenuFovColor
-local BtnEspEnemy, MenuEspEnemy
-local BtnEspAlly, MenuEspAlly
-
-local function UpdateMenuVisibility()
-    if SliderFovRadius then SliderFovRadius.Visible = CheatSettings.AimbotEnabled or CheatSettings.FovVisible end
-    if MenuFovColor then MenuFovColor.Visible = CheatSettings.FovVisible end
-    if BtnEspEnemy then BtnEspEnemy.Visible = CheatSettings.EspEnabled end
-    if MenuEspEnemy then MenuEspEnemy.Visible = CheatSettings.EspEnabled end
-    if BtnEspAlly then BtnEspAlly.Visible = CheatSettings.EspEnabled end
-    if MenuEspAlly then MenuEspAlly.Visible = CheatSettings.EspEnabled end
-end
-table.insert(UIUpdaters, UpdateMenuVisibility)
-
-CreateToggle(TabAimbot, "[ AIMBOT ]", "AimbotEnabled", UITheme.Red, 1, UpdateMenuVisibility)
+CreateToggle(TabAimbot, "[ AIMBOT ]", "AimbotEnabled", UITheme.Red, 1)
 CreateModeToggle(TabAimbot, "[ AIM MODE ]", "AimbotMode", {"Always", "On RMB"}, 2)
 CreateToggle(TabAimbot, "[ TEAM CHECK ]", "TeamCheck", UITheme.Red, 3)
 CreateSlider(TabAimbot, "Head Chance %", "HeadChance", 0, 100, 4)
 CreateSlider(TabAimbot, "Max Distance", "MaxDistance", 0, 5000, 5)
 
-CreateToggle(TabAimbot, "[ FOV CIRCLE ]", "FovVisible", UITheme.Red, 6, UpdateMenuVisibility)
-SliderFovRadius = CreateSlider(TabAimbot, "FOV Radius", "FovRadius", 0, 1000, 7)
-MenuFovColor = CreateHueMenu(TabAimbot, "FOV Options", 8, "FovHue", "FovVal", "FovTransparency")
+CreateToggle(TabAimbot, "[ FOV CIRCLE ]", "FovVisible", UITheme.Red, 6)
+CreateSlider(TabAimbot, "FOV Radius", "FovRadius", 0, 1000, 7)
+CreateColorMenu(TabAimbot, "FOV Options", 8, "FovHue", "FovSat", "FovVal", "FovTransparency")
 
-CreateToggle(TabEsp, "[ ESP ]", "EspEnabled", UITheme.Red, 1, UpdateMenuVisibility)
-BtnEspEnemy, _ = CreateToggle(TabEsp, "[ ENEMIES ESP ]", "EspEnemies", UITheme.Red, 2)
-MenuEspEnemy = CreateHueMenu(TabEsp, "Enemies Color", 3, "EspEnemyHue", "EspEnemyVal", "EspEnemyTransp")
-BtnEspAlly, _ = CreateToggle(TabEsp, "[ ALLIES ESP ]", "EspAllies", UITheme.Red, 4)
-MenuEspAlly = CreateHueMenu(TabEsp, "Allies Color", 5, "EspAllyHue", "EspAllyVal", "EspAllyTransp")
+CreateToggle(TabEsp, "[ ESP ]", "EspEnabled", UITheme.Red, 1)
+CreateToggle(TabEsp, "[ ENEMIES ESP ]", "EspEnemies", UITheme.Red, 2)
+CreateColorMenu(TabEsp, "Enemies Color", 3, "EspEnemyHue", "EspEnemySat", "EspEnemyVal", "EspEnemyTransp")
+CreateToggle(TabEsp, "[ ALLIES ESP ]", "EspAllies", UITheme.Red, 4)
+CreateColorMenu(TabEsp, "Allies Color", 5, "EspAllyHue", "EspAllySat", "EspAllyVal", "EspAllyTransp")
 
-CreateHueMenu(TabSettings, "UI Accent Color", 1, "MenuHue", "MenuVal", nil)
+CreateColorMenu(TabSettings, "UI Accent Color", 1, "MenuHue", "MenuSat", "MenuVal", nil)
 
 local isBinding = false
 local PanicKeyLabel
@@ -838,19 +829,23 @@ CreateAction(TabSettings, "[ RESET SETTINGS ]", UITheme.DarkRed, 3, function(btn
     CheatSettings.MaxDistance = 0
     CheatSettings.FovVisible = false
     CheatSettings.FovRadius = 0
-    CheatSettings.FovHue = 0
+    CheatSettings.FovHue = 0.33
+    CheatSettings.FovSat = 100
     CheatSettings.FovVal = 100
     CheatSettings.FovTransparency = 0
     CheatSettings.EspEnabled = false
     CheatSettings.EspEnemies = false
-    CheatSettings.EspEnemyHue = 0
+    CheatSettings.EspEnemyHue = 0.0
+    CheatSettings.EspEnemySat = 100
     CheatSettings.EspEnemyVal = 100
     CheatSettings.EspEnemyTransp = 0
     CheatSettings.EspAllies = false
-    CheatSettings.EspAllyHue = 0
+    CheatSettings.EspAllyHue = 0.6
+    CheatSettings.EspAllySat = 100
     CheatSettings.EspAllyVal = 100
     CheatSettings.EspAllyTransp = 0
     CheatSettings.MenuHue = 0.33
+    CheatSettings.MenuSat = 100
     CheatSettings.MenuVal = 100
     
     TriggerUpdaters()
@@ -1045,7 +1040,9 @@ table.insert(ScriptConnections, playerAddedConn)
 
 local playerRemovedConn = Players.PlayerRemoving:Connect(function(player)
     if EspInstances[player] and EspInstances[player].box then 
-        pcall(function() espData.box:Remove() end)
+        pcall(function()
+            EspInstances[player].box:Remove() 
+        end)
         EspInstances[player] = nil 
     end
 end)
@@ -1064,9 +1061,9 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
         return
     end
 
-    if CheatSettings.FovVisible and CheatSettings.FovRadius > 0 then
+    if CheatSettings.FovVisible and CheatSettings.FovRadius > 0 and not IsCompletelyHidden then
         FovCircle.Size = UDim2.new(0, CheatSettings.FovRadius * 2, 0, CheatSettings.FovRadius * 2)
-        FovCircleStroke.Color = Color3.fromHSV(CheatSettings.FovHue, 1, CheatSettings.FovVal / 100)
+        FovCircleStroke.Color = Color3.fromHSV(CheatSettings.FovHue, CheatSettings.FovSat / 100, CheatSettings.FovVal / 100)
         FovCircleStroke.Transparency = CheatSettings.FovTransparency / 100
         FovCircle.Visible = true
     else
@@ -1078,7 +1075,7 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
         local humanoid = character and character:FindFirstChildOfClass("Humanoid")
         local rootPart = character and (character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("Head"))
         
-        if CheatSettings.EspEnabled and rootPart and humanoid and humanoid.Health > 0 then
+        if CheatSettings.EspEnabled and rootPart and humanoid and humanoid.Health > 0 and not IsCompletelyHidden then
             local isTeam = IsTeammate(player)
             local shouldShow = (isTeam and CheatSettings.EspAllies) or (not isTeam and CheatSettings.EspEnemies)
             
@@ -1091,10 +1088,10 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
                         espData.box.Position = Vector2.new(screenPosition.X - 7, screenPosition.Y - 7)
                         
                         if isTeam then
-                            espData.box.Color = Color3.fromHSV(CheatSettings.EspAllyHue, 1, CheatSettings.EspAllyVal / 100)
+                            espData.box.Color = Color3.fromHSV(CheatSettings.EspAllyHue, CheatSettings.EspAllySat / 100, CheatSettings.EspAllyVal / 100)
                             espData.box.Transparency = CheatSettings.EspAllyTransp / 100
                         else
-                            espData.box.Color = Color3.fromHSV(CheatSettings.EspEnemyHue, 1, CheatSettings.EspEnemyVal / 100)
+                            espData.box.Color = Color3.fromHSV(CheatSettings.EspEnemyHue, CheatSettings.EspEnemySat / 100, CheatSettings.EspEnemyVal / 100)
                             espData.box.Transparency = CheatSettings.EspEnemyTransp / 100
                         end
                         
