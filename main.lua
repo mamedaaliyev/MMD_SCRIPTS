@@ -102,14 +102,20 @@ local function LoadSettings()
 end
 LoadSettings()
 
+local Mouse = LocalPlayer:GetMouse()
 local IsRightMousePressed = false
 
+table.insert(ScriptConnections, Mouse.Button2Down:Connect(function()
+    IsRightMousePressed = true
+end))
+table.insert(ScriptConnections, Mouse.Button2Up:Connect(function()
+    IsRightMousePressed = false
+end))
 table.insert(ScriptConnections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         IsRightMousePressed = true
     end
 end))
-
 table.insert(ScriptConnections, UserInputService.InputEnded:Connect(function(input, gameProcessed)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         IsRightMousePressed = false
@@ -118,12 +124,6 @@ end))
 
 local function IsAimKeyPressed()
     if CheatSettings.AimbotMode == "Always" then return true end
-    local success, isDown = pcall(function()
-        return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-    end)
-    if success then
-        return isDown
-    end
     return IsRightMousePressed
 end
 
@@ -403,14 +403,11 @@ local function CreateTabButton(text, targetScroll, order)
 
     btn.MouseButton1Click:Connect(function()
         if ActiveTabButton == btn then return end
-        
         for i, v in ipairs(DynamicUIElements.Texts) do
             if v == ActiveTabButton then table.remove(DynamicUIElements.Texts, i) break end
         end
-        
         ActiveTabButton.TextColor3 = UITheme.TextDim
         CreateTween(ActiveTabButton:FindFirstChild("Frame"), {Size = UDim2.new(0, 0, 0, 2)}, 0.3)
-        
         ActiveTabButton = btn
         btn.TextColor3 = CurrentAccentColor
         table.insert(DynamicUIElements.Texts, btn)
@@ -462,7 +459,7 @@ end
 local function CreateToggle(parent, titleText, settingKey, colorOff, order, callback)
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, 0, 0, 38)
-    button.BackgroundTransparency = 0
+    button.BackgroundTransparency = 0.1
     button.BorderSizePixel = 0
     button.Text = ""
     button.LayoutOrder = order
@@ -508,7 +505,7 @@ local function CreateModeToggle(parent, titleText, settingKey, modes, order, cal
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, 0, 0, 38)
     button.BackgroundColor3 = UITheme.Container
-    button.BackgroundTransparency = 0
+    button.BackgroundTransparency = 0.1
     button.BorderSizePixel = 0
     button.Text = ""
     button.LayoutOrder = order
@@ -548,7 +545,7 @@ local function CreateAction(parent, titleText, colorOff, order, callback)
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, 0, 0, 38)
     button.BackgroundColor3 = colorOff
-    button.BackgroundTransparency = 0
+    button.BackgroundTransparency = 0.1
     button.BorderSizePixel = 0
     button.Text = ""
     button.LayoutOrder = order
@@ -1035,15 +1032,31 @@ local function IsTeammate(player)
     if not CheatSettings.TeamCheck then 
         return false 
     end
+    
     if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then 
         return true 
     end
+    
     local success, isSameColor = pcall(function()
         return player.TeamColor == LocalPlayer.TeamColor
     end)
     if success and isSameColor then
         return true
     end
+    
+    local isCustomTeam = false
+    pcall(function()
+        local myTeamVal = LocalPlayer:FindFirstChild("Team") or LocalPlayer:FindFirstChild("Role") or LocalPlayer:FindFirstChild("group") or LocalPlayer:FindFirstChild("TeamColor")
+        local enemyTeamVal = player:FindFirstChild("Team") or player:FindFirstChild("Role") or player:FindFirstChild("group") or player:FindFirstChild("TeamColor")
+        
+        if myTeamVal and enemyTeamVal and myTeamVal.Value ~= nil and myTeamVal.Value == enemyTeamVal.Value then
+            isCustomTeam = true
+        end
+    end)
+    if isCustomTeam then 
+        return true 
+    end
+    
     return false
 end
 
