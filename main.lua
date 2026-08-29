@@ -16,12 +16,16 @@ end
 WaitForCharacter()
 
 local TargetGuiParent
-local success = pcall(function()
-    TargetGuiParent = CoreGui
-    local test = TargetGuiParent.Name
-end)
-if not success or not TargetGuiParent then
-    TargetGuiParent = LocalPlayer:WaitForChild("PlayerGui")
+if gethui then
+    TargetGuiParent = gethui()
+else
+    local success = pcall(function()
+        TargetGuiParent = CoreGui
+        local test = TargetGuiParent.Name
+    end)
+    if not success or not TargetGuiParent then
+        TargetGuiParent = LocalPlayer:WaitForChild("PlayerGui")
+    end
 end
 
 if getgenv().mmd_scripts_cheat then
@@ -37,6 +41,7 @@ local IsCheatLoaded = false
 local IsCompletelyHidden = false
 local UIUpdaters = {}
 local AnimatedGradients = {}
+local ScrollFrames = {}
 
 local ConfigPath = "mmd_scripts_settings.json"
 local CheatSettings = {
@@ -97,21 +102,29 @@ local function LoadSettings()
 end
 LoadSettings()
 
+local Mouse = LocalPlayer:GetMouse()
+local IsRightMousePressed = false
+
+table.insert(ScriptConnections, Mouse.Button2Down:Connect(function()
+    IsRightMousePressed = true
+end))
+
+table.insert(ScriptConnections, Mouse.Button2Up:Connect(function()
+    IsRightMousePressed = false
+end))
+
 local CurrentAccentColor = Color3.fromHSV(CheatSettings.MenuHue, CheatSettings.MenuSat / 100, CheatSettings.MenuVal / 100)
 local DynamicUIElements = {
     Backgrounds = {},
     Strokes = {},
-    Texts = {},
-    Gradients = {}
+    Texts = {}
 }
 
 local UITheme = {
-    Background1 = Color3.fromRGB(15, 15, 18),
-    Background2 = Color3.fromRGB(25, 25, 32),
-    Header1 = Color3.fromRGB(20, 20, 24),
-    Header2 = Color3.fromRGB(28, 28, 35),
-    Container = Color3.fromRGB(32, 32, 38),
-    Text = Color3.fromRGB(245, 245, 245),
+    Background = Color3.fromRGB(15, 15, 17),
+    Header = Color3.fromRGB(22, 22, 25),
+    Container = Color3.fromRGB(30, 30, 35),
+    Text = Color3.fromRGB(240, 240, 240),
     TextDim = Color3.fromRGB(150, 150, 160),
     Red = Color3.fromRGB(255, 60, 60),
     DarkRed = Color3.fromRGB(180, 40, 40)
@@ -129,11 +142,11 @@ local function CreateTween(instance, properties, duration, style)
 end
 
 local isMobileDevice = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-local WindowWidth = isMobileDevice and 260 or 250
-local WindowHeight = isMobileDevice and 480 or 450
+local WindowWidth = 260
+local WindowHeight = 450
 
 local MainGui = Instance.new("ScreenGui")
-MainGui.Name = "mmd_scripts_UI"
+MainGui.Name = HttpService:GenerateGUID(false)
 MainGui.ResetOnSpawn = false
 MainGui.IgnoreGuiInset = true
 MainGui.Parent = TargetGuiParent
@@ -166,7 +179,7 @@ local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 0, 0, 0)
 MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+MainFrame.BackgroundColor3 = UITheme.Background
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.Active = true
@@ -177,14 +190,6 @@ local MainFrameCorner = Instance.new("UICorner")
 MainFrameCorner.CornerRadius = UDim.new(0, 10)
 MainFrameCorner.Parent = MainFrame
 
-local MainBgGradient = Instance.new("UIGradient")
-MainBgGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, UITheme.Background1),
-    ColorSequenceKeypoint.new(1, UITheme.Background2)
-})
-MainBgGradient.Parent = MainFrame
-table.insert(AnimatedGradients, MainBgGradient)
-
 local MainStroke = Instance.new("UIStroke")
 MainStroke.Thickness = 1.5
 MainStroke.Color = CurrentAccentColor
@@ -194,21 +199,13 @@ table.insert(DynamicUIElements.Strokes, MainStroke)
 
 local TopBar = Instance.new("Frame")
 TopBar.Size = UDim2.new(1, 0, 0, 40)
-TopBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+TopBar.BackgroundColor3 = UITheme.Header
 TopBar.BorderSizePixel = 0
 TopBar.Parent = MainFrame
 
 local TopBarCorner = Instance.new("UICorner")
 TopBarCorner.CornerRadius = UDim.new(0, 10)
 TopBarCorner.Parent = TopBar
-
-local TopBarGradient = Instance.new("UIGradient")
-TopBarGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, UITheme.Header1),
-    ColorSequenceKeypoint.new(1, UITheme.Header2)
-})
-TopBarGradient.Parent = TopBar
-table.insert(AnimatedGradients, TopBarGradient)
 
 local TopBarDivider = Instance.new("Frame")
 TopBarDivider.Size = UDim2.new(1, 0, 0, 1)
@@ -248,17 +245,17 @@ MinimizeCorner.Parent = MinimizeButton
 local TabBar = Instance.new("ScrollingFrame")
 TabBar.Size = UDim2.new(1, 0, 0, 35)
 TabBar.Position = UDim2.new(0, 0, 0, 40)
-TabBar.BackgroundTransparency = 1
+TabBar.BackgroundColor3 = UITheme.Header
 TabBar.BorderSizePixel = 0
 TabBar.ScrollBarThickness = 0
 TabBar.ScrollingDirection = Enum.ScrollingDirection.X
-TabBar.AutomaticCanvasSize = Enum.AutomaticSize.X
-TabBar.CanvasSize = UDim2.new(0, 0, 0, 0)
+TabBar.AutomaticCanvasSize = Enum.AutomaticSize.None
+TabBar.CanvasSize = UDim2.new(0, 400, 0, 0)
 TabBar.Parent = MainFrame
 
 local TabPadding = Instance.new("UIPadding")
-TabPadding.PaddingLeft = UDim.new(0, 10)
-TabPadding.PaddingRight = UDim.new(0, 10)
+TabPadding.PaddingLeft = UDim.new(0, 8)
+TabPadding.PaddingRight = UDim.new(0, 8)
 TabPadding.Parent = TabBar
 
 local TabLayout = Instance.new("UIListLayout")
@@ -266,8 +263,10 @@ TabLayout.FillDirection = Enum.FillDirection.Horizontal
 TabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 TabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabLayout.Padding = UDim.new(0, 8)
+TabLayout.Padding = UDim.new(0, 6)
 TabLayout.Parent = TabBar
+
+table.insert(ScrollFrames, {frame = TabBar, layout = TabLayout, axis = "X"})
 
 local TabDivider = Instance.new("Frame")
 TabDivider.Size = UDim2.new(1, 0, 0, 1)
@@ -290,20 +289,12 @@ local FloatingBall = Instance.new("TextButton")
 FloatingBall.Size = UDim2.new(0, 0, 0, 0)
 FloatingBall.Position = UDim2.new(0.5, 0, 0.5, 0)
 FloatingBall.AnchorPoint = Vector2.new(0.5, 0.5)
-FloatingBall.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+FloatingBall.BackgroundColor3 = UITheme.Header
 FloatingBall.BorderSizePixel = 0
 FloatingBall.Visible = false
 FloatingBall.Text = ""
 FloatingBall.ZIndex = 999
 FloatingBall.Parent = MainGui
-
-local FloatingBallGradient = Instance.new("UIGradient")
-FloatingBallGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, UITheme.Header1),
-    ColorSequenceKeypoint.new(1, UITheme.Header2)
-})
-FloatingBallGradient.Parent = FloatingBall
-table.insert(AnimatedGradients, FloatingBallGradient)
 
 local FloatingBallCorner = Instance.new("UICorner")
 FloatingBallCorner.CornerRadius = UDim.new(1, 0)
@@ -342,6 +333,7 @@ local function CreateTabScroll(name)
     scroll.ScrollBarThickness = 2
     scroll.ScrollBarImageColor3 = UITheme.Container
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.None
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 800)
     scroll.Visible = false
     scroll.Parent = ContentContainer
 
@@ -358,10 +350,7 @@ local function CreateTabScroll(name)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Parent = scroll
 
-    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 25)
-    end)
-
+    table.insert(ScrollFrames, {frame = scroll, layout = layout, axis = "Y"})
     return scroll
 end
 
@@ -402,15 +391,19 @@ local function CreateTabButton(text, targetScroll, order)
 
     btn.MouseButton1Click:Connect(function()
         if ActiveTabButton == btn then return end
+        
         for i, v in ipairs(DynamicUIElements.Texts) do
             if v == ActiveTabButton then table.remove(DynamicUIElements.Texts, i) break end
         end
+        
         ActiveTabButton.TextColor3 = UITheme.TextDim
         CreateTween(ActiveTabButton:FindFirstChild("Frame"), {Size = UDim2.new(0, 0, 0, 2)}, 0.3)
+        
         ActiveTabButton = btn
         btn.TextColor3 = CurrentAccentColor
         table.insert(DynamicUIElements.Texts, btn)
         CreateTween(highlight, {Size = UDim2.new(0.8, 0, 0, 2)}, 0.3)
+
         TabAimbot.Visible = false
         TabEsp.Visible = false
         TabSettings.Visible = false
@@ -424,6 +417,28 @@ CreateTabButton("ESP", TabEsp, 2)
 CreateTabButton("SETTINGS", TabSettings, 3)
 CreateTabButton("ABOUT US", TabAbout, 4)
 
+table.insert(ScriptConnections, RunService.RenderStepped:Connect(function()
+    for _, data in pairs(ScrollFrames) do
+        if data.frame and data.layout then
+            if data.axis == "Y" then
+                data.frame.CanvasSize = UDim2.new(0, 0, 0, data.layout.AbsoluteContentSize.Y + 20)
+            else
+                data.frame.CanvasSize = UDim2.new(0, data.layout.AbsoluteContentSize.X + 20, 0, 0)
+            end
+        end
+    end
+end))
+
+local function ApplyGradient(instance)
+    local grad = Instance.new("UIGradient")
+    grad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+        ColorSequenceKeypoint.new(1, Color3.new(0.6, 0.6, 0.6))
+    })
+    grad.Parent = instance
+    table.insert(AnimatedGradients, grad)
+end
+
 local function UpdateUIColors()
     CurrentAccentColor = Color3.fromHSV(CheatSettings.MenuHue, CheatSettings.MenuSat / 100, CheatSettings.MenuVal / 100)
     for _, obj in pairs(DynamicUIElements.Backgrounds) do
@@ -435,45 +450,23 @@ local function UpdateUIColors()
     for _, obj in pairs(DynamicUIElements.Texts) do
         if obj and obj.Parent then obj.TextColor3 = CurrentAccentColor end
     end
-    for _, grad in pairs(DynamicUIElements.Gradients) do
-        if grad and grad.Parent then
-            local darker = Color3.fromRGB(math.max(CurrentAccentColor.R*255 - 40, 0), math.max(CurrentAccentColor.G*255 - 40, 0), math.max(CurrentAccentColor.B*255 - 40, 0))
-            grad.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, CurrentAccentColor),
-                ColorSequenceKeypoint.new(1, darker)
-            })
-        end
-    end
 end
 
 local function TriggerUpdaters()
-    for _, fn in ipairs(UIUpdaters) do
-        pcall(fn)
-    end
+    for _, fn in ipairs(UIUpdaters) do pcall(fn) end
     UpdateUIColors()
-end
-
-local function ApplyButtonGradient(button)
-    local grad = Instance.new("UIGradient")
-    local darker = Color3.fromRGB(math.max(CurrentAccentColor.R*255 - 40, 0), math.max(CurrentAccentColor.G*255 - 40, 0), math.max(CurrentAccentColor.B*255 - 40, 0))
-    grad.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, CurrentAccentColor),
-        ColorSequenceKeypoint.new(1, darker)
-    })
-    grad.Rotation = 90
-    grad.Parent = button
-    table.insert(DynamicUIElements.Gradients, grad)
 end
 
 local function CreateToggle(parent, titleText, settingKey, colorOff, order, callback)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, 0, 0, 36)
-    button.BackgroundTransparency = 0.1
+    button.Size = UDim2.new(1, 0, 0, 38)
+    button.BackgroundTransparency = 0
     button.BorderSizePixel = 0
     button.Text = ""
     button.LayoutOrder = order
     button.Parent = parent
 
+    ApplyGradient(button)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = button
@@ -494,11 +487,9 @@ local function CreateToggle(parent, titleText, settingKey, colorOff, order, call
             for _,v in ipairs(DynamicUIElements.Backgrounds) do if v == button then found = true break end end
             if not found then table.insert(DynamicUIElements.Backgrounds, button) end
             button.BackgroundColor3 = CurrentAccentColor
-            if not button:FindFirstChildOfClass("UIGradient") then ApplyButtonGradient(button) end
         else
             for i,v in ipairs(DynamicUIElements.Backgrounds) do if v == button then table.remove(DynamicUIElements.Backgrounds, i) break end end
             button.BackgroundColor3 = colorOff
-            if button:FindFirstChildOfClass("UIGradient") then button:FindFirstChildOfClass("UIGradient"):Destroy() end
         end
     end
     table.insert(UIUpdaters, updateUI)
@@ -514,14 +505,15 @@ end
 
 local function CreateModeToggle(parent, titleText, settingKey, modes, order, callback)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, 0, 0, 36)
+    button.Size = UDim2.new(1, 0, 0, 38)
     button.BackgroundColor3 = UITheme.Container
-    button.BackgroundTransparency = 0.1
+    button.BackgroundTransparency = 0
     button.BorderSizePixel = 0
     button.Text = ""
     button.LayoutOrder = order
     button.Parent = parent
 
+    ApplyGradient(button)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = button
@@ -554,14 +546,15 @@ end
 
 local function CreateAction(parent, titleText, colorOff, order, callback)
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, 0, 0, 36)
+    button.Size = UDim2.new(1, 0, 0, 38)
     button.BackgroundColor3 = colorOff
-    button.BackgroundTransparency = 0.1
+    button.BackgroundTransparency = 0
     button.BorderSizePixel = 0
     button.Text = ""
     button.LayoutOrder = order
     button.Parent = parent
 
+    ApplyGradient(button)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = button
@@ -605,8 +598,8 @@ local function CreateSlider(parent, labelTitle, settingKey, minVal, maxVal, orde
     title.Parent = container
 
     local sBg = Instance.new("Frame")
-    sBg.Size = UDim2.new(1, -16, 0, 4)
-    sBg.Position = UDim2.new(0, 8, 0, 28)
+    sBg.Size = UDim2.new(1, -16, 0, 6)
+    sBg.Position = UDim2.new(0, 8, 0, 26)
     sBg.BackgroundColor3 = UITheme.Background
     sBg.BorderSizePixel = 0
     sBg.Parent = container
@@ -618,10 +611,10 @@ local function CreateSlider(parent, labelTitle, settingKey, minVal, maxVal, orde
     sFill.Parent = sBg
     Instance.new("UICorner", sFill).CornerRadius = UDim.new(1, 0)
     table.insert(DynamicUIElements.Backgrounds, sFill)
-    ApplyButtonGradient(sFill)
+    ApplyGradient(sFill)
 
     local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, 12, 0, 12)
+    knob.Size = UDim2.new(0, 14, 0, 14)
     knob.BackgroundColor3 = UITheme.Text
     knob.BorderSizePixel = 0
     knob.Parent = sBg
@@ -631,7 +624,7 @@ local function CreateSlider(parent, labelTitle, settingKey, minVal, maxVal, orde
         local val = CheatSettings[settingKey]
         local r = (maxVal - minVal) > 0 and (val - minVal) / (maxVal - minVal) or 0
         sFill.Size = UDim2.new(r, 0, 1, 0)
-        knob.Position = UDim2.new(r, -6, 0.5, -6)
+        knob.Position = UDim2.new(r, -7, 0.5, -7)
         title.Text = labelTitle .. ": " .. tostring(val)
     end
     table.insert(UIUpdaters, updateUI)
@@ -677,7 +670,7 @@ local function CreateHueMenu(parent, titleText, order, hueKey, satKey, valKey, a
 
     wrap.Size = UDim2.new(1, 0, 0, 36)
     wrap.BackgroundColor3 = UITheme.Container
-    wrap.BackgroundTransparency = 0.8
+    wrap.BackgroundTransparency = 0.5
     wrap.BorderSizePixel = 0
     wrap.LayoutOrder = order
     wrap.ClipsDescendants = true
@@ -726,8 +719,8 @@ local function CreateHueMenu(parent, titleText, order, hueKey, satKey, valKey, a
         t.Parent = f
 
         local b = Instance.new("Frame", f)
-        b.Size = UDim2.new(1, 0, 0, 8)
-        b.Position = UDim2.new(0, 0, 0, 20)
+        b.Size = UDim2.new(1, 0, 0, 6)
+        b.Position = UDim2.new(0, 0, 0, 22)
         b.BackgroundColor3 = UITheme.Background
         b.BorderSizePixel = 0
         b.Parent = f
@@ -757,11 +750,11 @@ local function CreateHueMenu(parent, titleText, order, hueKey, satKey, valKey, a
             fl.Parent = b
             Instance.new("UICorner", fl).CornerRadius = UDim.new(1, 0)
             table.insert(DynamicUIElements.Backgrounds, fl)
-            ApplyButtonGradient(fl)
+            ApplyGradient(fl)
         end
 
         local k = Instance.new("Frame", b)
-        k.Size = UDim2.new(0, 12, 0, 12)
+        k.Size = UDim2.new(0, 14, 0, 14)
         k.BackgroundColor3 = UITheme.Text
         k.Parent = b
         Instance.new("UICorner", k).CornerRadius = UDim.new(1, 0)
@@ -777,7 +770,7 @@ local function CreateHueMenu(parent, titleText, order, hueKey, satKey, valKey, a
                 if fl then fl.Size = UDim2.new(r, 0, 1, 0) end
                 t.Text = lbl .. ": " .. val .. "%"
             end
-            k.Position = UDim2.new(r, -6, 0.5, -6)
+            k.Position = UDim2.new(r, -7, 0.5, -7)
         end
         table.insert(UIUpdaters, updateUI)
         
@@ -789,10 +782,7 @@ local function CreateHueMenu(parent, titleText, order, hueKey, satKey, valKey, a
             local r = math.clamp((x - ap) / as, 0, 1)
             CheatSettings[settingKey] = (sliderType == "Hue") and r or math.floor(r * maxVal)
             updateUI()
-            
-            if settingKey == "MenuHue" or settingKey == "MenuSat" or settingKey == "MenuVal" then 
-                TriggerUpdaters() 
-            end
+            if settingKey == "MenuHue" or settingKey == "MenuSat" or settingKey == "MenuVal" then TriggerUpdaters() end
         end
         
         f.InputBegan:Connect(function(ip) 
@@ -807,8 +797,7 @@ local function CreateHueMenu(parent, titleText, order, hueKey, satKey, valKey, a
         end)
         UserInputService.InputEnded:Connect(function(ip) 
             if d and (ip.UserInputType == Enum.UserInputType.MouseButton1 or ip.UserInputType == Enum.UserInputType.Touch) then 
-                d = false 
-                SaveSettings() 
+                d = false SaveSettings() 
             end 
         end)
     end
@@ -839,7 +828,6 @@ CreateModeToggle(TabAimbot, "[ AIM MODE ]", "AimbotMode", {"Always", "On RMB"}, 
 CreateToggle(TabAimbot, "[ TEAM CHECK ]", "TeamCheck", UITheme.Red, 3)
 CreateSlider(TabAimbot, "Head Chance %", "HeadChance", 0, 100, 4)
 CreateSlider(TabAimbot, "Max Distance", "MaxDistance", 0, 5000, 5)
-
 CreateToggle(TabAimbot, "[ FOV CIRCLE ]", "FovVisible", UITheme.Red, 6, UpdateMenuVisibility)
 SliderFovRadius = CreateSlider(TabAimbot, "FOV Radius", "FovRadius", 0, 1000, 7)
 MenuFovColor = CreateHueMenu(TabAimbot, "FOV Options", 8, "FovHue", "FovSat", "FovVal", "FovTransparency")
@@ -851,7 +839,6 @@ BtnEspAlly, _ = CreateToggle(TabEsp, "[ ALLIES ESP ]", "EspAllies", UITheme.Red,
 MenuEspAlly = CreateHueMenu(TabEsp, "Allies Color", 5, "EspAllyHue", "EspAllySat", "EspAllyVal", "EspAllyTransp")
 
 CreateHueMenu(TabSettings, "UI Accent Color", 1, "MenuHue", "MenuSat", "MenuVal", nil)
-
 local isBinding = false
 local PanicKeyLabel
 _, PanicKeyLabel = CreateAction(TabSettings, "[ PANIC KEY ] : " .. CheatSettings.PanicKey, UITheme.Container, 2, function(btn, lbl)
@@ -869,9 +856,7 @@ _, PanicKeyLabel = CreateAction(TabSettings, "[ PANIC KEY ] : " .. CheatSettings
         end
     end)
 end)
-table.insert(UIUpdaters, function()
-    if PanicKeyLabel then PanicKeyLabel.Text = "[ PANIC KEY ] : " .. CheatSettings.PanicKey end
-end)
+table.insert(UIUpdaters, function() if PanicKeyLabel then PanicKeyLabel.Text = "[ PANIC KEY ] : " .. CheatSettings.PanicKey end end)
 
 CreateAction(TabSettings, "[ RESET SETTINGS ]", UITheme.DarkRed, 3, function(btn, lbl)
     CheatSettings.AimbotEnabled = false
@@ -899,31 +884,19 @@ CreateAction(TabSettings, "[ RESET SETTINGS ]", UITheme.DarkRed, 3, function(btn
     CheatSettings.MenuHue = 0.33
     CheatSettings.MenuSat = 100
     CheatSettings.MenuVal = 100
-    
     TriggerUpdaters()
     SaveSettings()
-    
-    lbl.Text = "RESET SUCCESSFUL!"
+    lbl.Text = "SUCCESS!"
     task.delay(1.5, function() lbl.Text = "[ RESET SETTINGS ]" end)
 end)
 
 CreateAction(TabAbout, "[ YOUTUBE ] @mmd_scripts", UITheme.Container, 1, function(btn, lbl)
-    if setclipboard then
-        pcall(function() setclipboard("https://youtube.com/@mmd_scripts") end)
-        lbl.Text = "Copied YouTube!"
-    else
-        lbl.Text = "@mmd_scripts"
-    end
+    if setclipboard then pcall(function() setclipboard("https://youtube.com/@mmd_scripts") end) lbl.Text = "Copied!" else lbl.Text = "@mmd_scripts" end
     task.delay(1.5, function() lbl.Text = "[ YOUTUBE ] @mmd_scripts" end)
 end)
 
 CreateAction(TabAbout, "[ TIKTOK ] @mmd_scripts", UITheme.Container, 2, function(btn, lbl)
-    if setclipboard then
-        pcall(function() setclipboard("https://tiktok.com/@mmd_scripts") end)
-        lbl.Text = "Copied TikTok!"
-    else
-        lbl.Text = "@mmd_scripts"
-    end
+    if setclipboard then pcall(function() setclipboard("https://tiktok.com/@mmd_scripts") end) lbl.Text = "Copied!" else lbl.Text = "@mmd_scripts" end
     task.delay(1.5, function() lbl.Text = "[ TIKTOK ] @mmd_scripts" end)
 end)
 
@@ -952,43 +925,32 @@ SetupDrag(BottomDragBar)
 local dragChanged = UserInputService.InputChanged:Connect(function(input)
     if isDraggingWindow and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragInputPoint
-        if delta.Magnitude > 3 then
-            hasDragged = true
-        end
+        if delta.Magnitude > 3 then hasDragged = true end
         local targetObj = MainFrame.Visible and MainFrame or FloatingBall
-        
         local newXOffset = dragStartScreenPos.X.Offset + delta.X
         local newYOffset = dragStartScreenPos.Y.Offset + delta.Y
-        
         local screenSize = Camera.ViewportSize
         local objSize = targetObj.AbsoluteSize
-        
         local minX = objSize.X / 2
         local maxX = screenSize.X - (objSize.X / 2)
         local minY = objSize.Y / 2
         local maxY = screenSize.Y - (objSize.Y / 2)
-        
         newXOffset = math.clamp(newXOffset, minX, maxX)
         newYOffset = math.clamp(newYOffset, minY, maxY)
-
         targetObj.Position = UDim2.new(0, newXOffset, 0, newYOffset)
     end
 end)
 table.insert(ScriptConnections, dragChanged)
 
 local dragEnded = UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
-        isDraggingWindow = false 
-    end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isDraggingWindow = false end
 end)
 table.insert(ScriptConnections, dragEnded)
 
 local isMinimized = false
-
 local function ToggleMinimize()
     if not IsCheatLoaded or IsCompletelyHidden then return end
     isMinimized = not isMinimized
-    
     if isMinimized then
         local tween = CreateTween(MainFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3)
         tween.Completed:Connect(function()
@@ -1014,14 +976,8 @@ local function ToggleMinimize()
     end
 end
 
-MinimizeButton.MouseButton1Click:Connect(function()
-    ToggleMinimize()
-end)
-
-FloatingBall.MouseButton1Click:Connect(function()
-    if hasDragged then return end
-    ToggleMinimize()
-end)
+MinimizeButton.MouseButton1Click:Connect(function() ToggleMinimize() end)
+FloatingBall.MouseButton1Click:Connect(function() if hasDragged then return end ToggleMinimize() end)
 
 local panicConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if isBinding then return end
@@ -1031,28 +987,20 @@ local panicConn = UserInputService.InputBegan:Connect(function(input, gameProces
             MainFrame.Visible = false
             FloatingBall.Visible = false
         else
-            if isMinimized then
-                FloatingBall.Visible = true
-            else
-                MainFrame.Visible = true
-            end
+            if isMinimized then FloatingBall.Visible = true else MainFrame.Visible = true end
         end
     end
 end)
 table.insert(ScriptConnections, panicConn)
 
 local function IsTeammate(player)
-    if not CheatSettings.TeamCheck then 
-        return false 
-    end
-    if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then
-        return true
-    end
+    if not CheatSettings.TeamCheck then return false end
+    if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then return true end
     return false
 end
 
 local FovScreenGui = Instance.new("ScreenGui")
-FovScreenGui.Name = "mmd_scripts_FOV"
+FovScreenGui.Name = HttpService:GenerateGUID(false)
 FovScreenGui.ResetOnSpawn = false
 FovScreenGui.IgnoreGuiInset = true
 FovScreenGui.Parent = TargetGuiParent
@@ -1074,11 +1022,7 @@ FovCircleStroke.Parent = FovCircle
 
 local function AttachEspToPlayer(player)
     if player == LocalPlayer then return end
-    
-    local success, square = pcall(function()
-        return Drawing.new("Square")
-    end)
-    
+    local success, square = pcall(function() return Drawing.new("Square") end)
     if success and square then
         square.Thickness = 1.5
         square.Filled = false
@@ -1092,24 +1036,18 @@ table.insert(ScriptConnections, playerAddedConn)
 
 local playerRemovedConn = Players.PlayerRemoving:Connect(function(player)
     if EspInstances[player] and EspInstances[player].box then 
-        pcall(function()
-            EspInstances[player].box:Remove() 
-        end)
+        pcall(function() EspInstances[player].box:Remove() end)
         EspInstances[player] = nil 
     end
 end)
 table.insert(ScriptConnections, playerRemovedConn)
 
-for _, p in pairs(Players:GetPlayers()) do 
-    AttachEspToPlayer(p) 
-end
+for _, p in pairs(Players:GetPlayers()) do AttachEspToPlayer(p) end
 
 local espRenderConn = RunService.RenderStepped:Connect(function()
     if not IsCheatLoaded then
         FovCircle.Visible = false
-        for _, espData in pairs(EspInstances) do 
-            if espData.box then espData.box.Visible = false end 
-        end
+        for _, espData in pairs(EspInstances) do if espData.box then espData.box.Visible = false end end
         return
     end
 
@@ -1126,11 +1064,9 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
         local character = player.Character
         local humanoid = character and character:FindFirstChildOfClass("Humanoid")
         local rootPart = character and (character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("Head"))
-        
         if CheatSettings.EspEnabled and rootPart and humanoid and humanoid.Health > 0 and not IsCompletelyHidden then
             local isTeam = IsTeammate(player)
             local shouldShow = (isTeam and CheatSettings.EspAllies) or (not isTeam and CheatSettings.EspEnemies)
-            
             if shouldShow then
                 local distance = (rootPart.Position - Camera.CFrame.Position).Magnitude
                 if distance <= CheatSettings.MaxDistance then
@@ -1138,7 +1074,6 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
                     if isVisible then
                         espData.box.Size = Vector2.new(14, 14)
                         espData.box.Position = Vector2.new(screenPosition.X - 7, screenPosition.Y - 7)
-                        
                         if isTeam then
                             espData.box.Color = Color3.fromHSV(CheatSettings.EspAllyHue, CheatSettings.EspAllySat / 100, CheatSettings.EspAllyVal / 100)
                             espData.box.Transparency = CheatSettings.EspAllyTransp / 100
@@ -1146,7 +1081,6 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
                             espData.box.Color = Color3.fromHSV(CheatSettings.EspEnemyHue, CheatSettings.EspEnemySat / 100, CheatSettings.EspEnemyVal / 100)
                             espData.box.Transparency = CheatSettings.EspEnemyTransp / 100
                         end
-                        
                         espData.box.Visible = true
                     else
                         espData.box.Visible = false
@@ -1168,38 +1102,28 @@ local function FetchOptimalTarget()
     local bestTarget = nil
     local bestDotProduct = -1
     local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    
     for _, player in pairs(Players:GetPlayers()) do
         local skipPlayer = false
-        if CheatSettings.TeamCheck and IsTeammate(player) then
-            skipPlayer = true
-        end
-        
+        if CheatSettings.TeamCheck and IsTeammate(player) then skipPlayer = true end
         if player ~= LocalPlayer and player.Character and not skipPlayer then
             local head = player.Character:FindFirstChild("Head")
             local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-            
             if head and humanoid and humanoid.Health > 0 then
                 local dist = (head.Position - Camera.CFrame.Position).Magnitude
                 if dist <= CheatSettings.MaxDistance then
                     local rayParams = RaycastParams.new()
                     rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
                     rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-                    
                     local origin = Camera.CFrame.Position
                     local direction = (head.Position - origin).Unit * dist
                     local hitResult = workspace:Raycast(origin, direction, rayParams)
-                    
                     if not hitResult or (hitResult.Position - head.Position).Magnitude < 3 then
                         local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
                         if onScreen then
                             local distanceFromCenter = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
                             if distanceFromCenter <= CheatSettings.FovRadius then
                                 local dotProduct = Camera.CFrame.LookVector:Dot((head.Position - Camera.CFrame.Position).Unit)
-                                if dotProduct > bestDotProduct then 
-                                    bestDotProduct = dotProduct
-                                    bestTarget = player 
-                                end
+                                if dotProduct > bestDotProduct then bestDotProduct = dotProduct bestTarget = player end
                             end
                         end
                     end
@@ -1212,49 +1136,21 @@ end
 
 local activeTarget = nil
 local activeBodyPart = nil
-
-local function IsRightMouseButtonHeld()
-    local success, result = pcall(function()
-        return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-    end)
-    if success then
-        return result
-    end
-    return IsRightMousePressed 
-end
-
 local aimbotRenderConn = RunService.RenderStepped:Connect(function()
-    if not IsCheatLoaded or not CheatSettings.AimbotEnabled then 
-        activeTarget = nil 
-        return 
-    end
-    
-    if CheatSettings.AimbotMode == "On RMB" and not IsRightMouseButtonHeld() then
-        activeTarget = nil
-        return
-    end
-    
+    if not IsCheatLoaded or not CheatSettings.AimbotEnabled then activeTarget = nil return end
+    if CheatSettings.AimbotMode == "On RMB" and not IsRightMousePressed then activeTarget = nil return end
     local foundTarget = FetchOptimalTarget()
-    
     if foundTarget then
         if foundTarget ~= activeTarget then
             activeTarget = foundTarget
-            
             local randomRoll = math.random(1, 100)
             if randomRoll <= CheatSettings.HeadChance then
                 activeBodyPart = foundTarget.Character:FindFirstChild("Head")
             else
-                activeBodyPart = foundTarget.Character:FindFirstChild("HumanoidRootPart") 
-                              or foundTarget.Character:FindFirstChild("Torso") 
-                              or foundTarget.Character:FindFirstChild("Head")
+                activeBodyPart = foundTarget.Character:FindFirstChild("HumanoidRootPart") or foundTarget.Character:FindFirstChild("Torso") or foundTarget.Character:FindFirstChild("Head")
             end
         end
-        
-        if activeBodyPart and activeBodyPart.Parent then 
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, activeBodyPart.Position) 
-        else 
-            activeTarget = nil 
-        end
+        if activeBodyPart and activeBodyPart.Parent then Camera.CFrame = CFrame.new(Camera.CFrame.Position, activeBodyPart.Position) else activeTarget = nil end
     else
         activeTarget = nil
     end
@@ -1265,7 +1161,6 @@ task.spawn(function()
     TriggerUpdaters()
     local textString = "BY MMD SCRIPTS"
     local letterLabels = {}
-    
     for i = 1, #textString do
         local letter = textString:sub(i, i)
         local lbl = Instance.new("TextLabel")
@@ -1275,66 +1170,41 @@ task.spawn(function()
         lbl.TextSize = 36
         lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
         lbl.TextTransparency = 1
-        
-        if letter == " " then
-            lbl.Size = UDim2.new(0, 10, 1, 0)
-        else
-            lbl.AutomaticSize = Enum.AutomaticSize.X
-            lbl.Size = UDim2.new(0, 0, 1, 0)
-        end
-        
+        if letter == " " then lbl.Size = UDim2.new(0, 10, 1, 0) else lbl.AutomaticSize = Enum.AutomaticSize.X lbl.Size = UDim2.new(0, 0, 1, 0) end
         lbl.Parent = WaveFrame
         table.insert(letterLabels, lbl)
     end
     
     local animTime = 0
-    local bgGradientConn
-    local textAnimConn
-    
-    bgGradientConn = RunService.RenderStepped:Connect(function(dt)
+    local bgGradientConn = RunService.RenderStepped:Connect(function(dt)
         animTime = animTime + dt
         for _, grad in pairs(AnimatedGradients) do
-            if grad and grad.Parent then
-                grad.Rotation = (animTime * 45) % 360
-            end
+            if grad and grad.Parent then grad.Rotation = (animTime * 45) % 360 end
         end
     end)
+    table.insert(ScriptConnections, bgGradientConn)
     
     CreateTween(LoadingContainer, {BackgroundTransparency = 0.2}, 0.5)
     task.wait(0.2)
-    
     CreateTween(WaveFrame, {Position = UDim2.new(0.5, 0, 0.5, 0)}, 1.2, Enum.EasingStyle.Quart)
     
     local waveTime = 0
-    textAnimConn = RunService.RenderStepped:Connect(function(dt)
+    local textAnimConn = RunService.RenderStepped:Connect(function(dt)
         waveTime = waveTime + (dt * 3)
         for i, lbl in ipairs(letterLabels) do
             if lbl and lbl.Parent then
                 local waveOffset = math.sin(waveTime + (i * 0.4)) * 12
                 lbl.Position = UDim2.new(0, 0, 0, waveOffset)
                 local colorPhase = (math.sin(waveTime * 1.5 - (i * 0.2)) + 1) / 2
-                lbl.TextColor3 = Color3.fromRGB(
-                    math.floor(colorPhase * 50),
-                    math.floor(100 + colorPhase * 155),
-                    255
-                )
+                lbl.TextColor3 = Color3.fromRGB(math.floor(colorPhase * 50), math.floor(100 + colorPhase * 155), 255)
             end
         end
     end)
 
-    for i, lbl in ipairs(letterLabels) do
-        CreateTween(lbl, {TextTransparency = 0}, 0.5)
-        task.wait(0.03)
-    end
-    
+    for i, lbl in ipairs(letterLabels) do CreateTween(lbl, {TextTransparency = 0}, 0.5) task.wait(0.03) end
     task.wait(2.5)
-    
     CreateTween(WaveFrame, {Position = UDim2.new(1.5, 0, 0.5, 0)}, 1.0, Enum.EasingStyle.Quart)
-    
-    for i, lbl in ipairs(letterLabels) do
-        CreateTween(lbl, {TextTransparency = 1}, 0.3)
-        task.wait(0.02)
-    end
+    for i, lbl in ipairs(letterLabels) do CreateTween(lbl, {TextTransparency = 1}, 0.3) task.wait(0.02) end
     
     task.wait(0.5)
     if textAnimConn then textAnimConn:Disconnect() end
@@ -1349,14 +1219,10 @@ task.spawn(function()
 end)
 
 getgenv().mmd_scripts_cheat.Destroy = function()
-    for _, connection in pairs(ScriptConnections) do 
-        connection:Disconnect() 
-    end
+    for _, connection in pairs(ScriptConnections) do connection:Disconnect() end
     if MainGui then MainGui:Destroy() end
     if FovScreenGui then FovScreenGui:Destroy() end
     for _, espData in pairs(EspInstances) do 
-        if espData.box then 
-            pcall(function() espData.box:Remove() end)
-        end 
+        if espData.box then pcall(function() espData.box:Remove() end) end 
     end
 end
