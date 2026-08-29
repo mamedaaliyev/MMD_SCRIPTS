@@ -97,17 +97,6 @@ local function LoadSettings()
 end
 LoadSettings()
 
-local Mouse = LocalPlayer:GetMouse()
-local IsRightMousePressed = false
-
-table.insert(ScriptConnections, Mouse.Button2Down:Connect(function()
-    IsRightMousePressed = true
-end))
-
-table.insert(ScriptConnections, Mouse.Button2Up:Connect(function()
-    IsRightMousePressed = false
-end))
-
 local CurrentAccentColor = Color3.fromHSV(CheatSettings.MenuHue, CheatSettings.MenuSat / 100, CheatSettings.MenuVal / 100)
 local DynamicUIElements = {
     Backgrounds = {},
@@ -352,8 +341,7 @@ local function CreateTabScroll(name)
     scroll.BorderSizePixel = 0
     scroll.ScrollBarThickness = 2
     scroll.ScrollBarImageColor3 = UITheme.Container
-    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scroll.AutomaticCanvasSize = Enum.AutomaticSize.None
     scroll.Visible = false
     scroll.Parent = ContentContainer
 
@@ -369,6 +357,10 @@ local function CreateTabScroll(name)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Parent = scroll
+
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 25)
+    end)
 
     return scroll
 end
@@ -674,10 +666,11 @@ local function CreateSlider(parent, labelTitle, settingKey, minVal, maxVal, orde
     return container
 end
 
-local function CreateHueMenu(parent, titleText, order, hueKey, valKey, alphaKey)
+local function CreateHueMenu(parent, titleText, order, hueKey, satKey, valKey, alphaKey)
     local wrap = Instance.new("Frame")
     
     local sliderCount = 1
+    if satKey then sliderCount = sliderCount + 1 end
     if valKey then sliderCount = sliderCount + 1 end
     if alphaKey then sliderCount = sliderCount + 1 end
     local expandedHeight = 36 + (sliderCount * 45) + 10
@@ -1099,7 +1092,9 @@ table.insert(ScriptConnections, playerAddedConn)
 
 local playerRemovedConn = Players.PlayerRemoving:Connect(function(player)
     if EspInstances[player] and EspInstances[player].box then 
-        pcall(function() espData.box:Remove() end)
+        pcall(function()
+            EspInstances[player].box:Remove() 
+        end)
         EspInstances[player] = nil 
     end
 end)
@@ -1118,11 +1113,11 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
         return
     end
 
-    if CheatSettings.FovVisible and CheatSettings.FovRadius > 0 then
+    if CheatSettings.FovVisible and CheatSettings.FovRadius > 0 and not IsCompletelyHidden then
         FovCircle.Size = UDim2.new(0, CheatSettings.FovRadius * 2, 0, CheatSettings.FovRadius * 2)
         FovCircleStroke.Color = Color3.fromHSV(CheatSettings.FovHue, CheatSettings.FovSat / 100, CheatSettings.FovVal / 100)
         FovCircleStroke.Transparency = CheatSettings.FovTransparency / 100
-        FovCircle.Visible = not IsCompletelyHidden
+        FovCircle.Visible = true
     else
         FovCircle.Visible = false
     end
@@ -1132,7 +1127,7 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
         local humanoid = character and character:FindFirstChildOfClass("Humanoid")
         local rootPart = character and (character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("Head"))
         
-        if CheatSettings.EspEnabled and rootPart and humanoid and humanoid.Health > 0 then
+        if CheatSettings.EspEnabled and rootPart and humanoid and humanoid.Health > 0 and not IsCompletelyHidden then
             local isTeam = IsTeammate(player)
             local shouldShow = (isTeam and CheatSettings.EspAllies) or (not isTeam and CheatSettings.EspEnemies)
             
@@ -1218,13 +1213,23 @@ end
 local activeTarget = nil
 local activeBodyPart = nil
 
+local function IsRightMouseButtonHeld()
+    local success, result = pcall(function()
+        return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+    end)
+    if success then
+        return result
+    end
+    return IsRightMousePressed 
+end
+
 local aimbotRenderConn = RunService.RenderStepped:Connect(function()
     if not IsCheatLoaded or not CheatSettings.AimbotEnabled then 
         activeTarget = nil 
         return 
     end
     
-    if CheatSettings.AimbotMode == "On RMB" and not IsRightMousePressed then
+    if CheatSettings.AimbotMode == "On RMB" and not IsRightMouseButtonHeld() then
         activeTarget = nil
         return
     end
@@ -1283,29 +1288,36 @@ task.spawn(function()
     end
     
     local animTime = 0
-    local rgbConnection
+    local bgGradientConn
+    local textAnimConn
+    
+    bgGradientConn = RunService.RenderStepped:Connect(function(dt)
+        animTime = animTime + dt
+        for _, grad in pairs(AnimatedGradients) do
+            if grad and grad.Parent then
+                grad.Rotation = (animTime * 45) % 360
+            end
+        end
+    end)
     
     CreateTween(LoadingContainer, {BackgroundTransparency = 0.2}, 0.5)
     task.wait(0.2)
     
     CreateTween(WaveFrame, {Position = UDim2.new(0.5, 0, 0.5, 0)}, 1.2, Enum.EasingStyle.Quart)
     
-    rgbConnection = RunService.RenderStepped:Connect(function(dt)
-        animTime = animTime + (dt * 3)
+    local waveTime = 0
+    textAnimConn = RunService.RenderStepped:Connect(function(dt)
+        waveTime = waveTime + (dt * 3)
         for i, lbl in ipairs(letterLabels) do
-            local waveOffset = math.sin(animTime + (i * 0.4)) * 12
-            lbl.Position = UDim2.new(0, 0, 0, waveOffset)
-            local colorPhase = (math.sin(animTime * 1.5 - (i * 0.2)) + 1) / 2
-            lbl.TextColor3 = Color3.fromRGB(
-                math.floor(colorPhase * 50),
-                math.floor(100 + colorPhase * 155),
-                255
-            )
-        end
-        
-        for _, grad in pairs(AnimatedGradients) do
-            if grad and grad.Parent then
-                grad.Rotation = (animTime * 30) % 360
+            if lbl and lbl.Parent then
+                local waveOffset = math.sin(waveTime + (i * 0.4)) * 12
+                lbl.Position = UDim2.new(0, 0, 0, waveOffset)
+                local colorPhase = (math.sin(waveTime * 1.5 - (i * 0.2)) + 1) / 2
+                lbl.TextColor3 = Color3.fromRGB(
+                    math.floor(colorPhase * 50),
+                    math.floor(100 + colorPhase * 155),
+                    255
+                )
             end
         end
     end)
@@ -1325,6 +1337,7 @@ task.spawn(function()
     end
     
     task.wait(0.5)
+    if textAnimConn then textAnimConn:Disconnect() end
     CreateTween(LoadingContainer, {BackgroundTransparency = 1}, 0.5).Completed:Connect(function()
         LoadingContainer:Destroy()
         IsCheatLoaded = true
