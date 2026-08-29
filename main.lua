@@ -36,6 +36,7 @@ local EspInstances = {}
 local IsCheatLoaded = false
 local IsCompletelyHidden = false
 local UIUpdaters = {}
+local AnimatedGradients = {}
 
 local ConfigPath = "mmd_scripts_settings.json"
 local CheatSettings = {
@@ -111,14 +112,17 @@ local CurrentAccentColor = Color3.fromHSV(CheatSettings.MenuHue, CheatSettings.M
 local DynamicUIElements = {
     Backgrounds = {},
     Strokes = {},
-    Texts = {}
+    Texts = {},
+    Gradients = {}
 }
 
 local UITheme = {
-    Background = Color3.fromRGB(15, 15, 17),
-    Header = Color3.fromRGB(22, 22, 25),
-    Container = Color3.fromRGB(30, 30, 35),
-    Text = Color3.fromRGB(240, 240, 240),
+    Background1 = Color3.fromRGB(15, 15, 18),
+    Background2 = Color3.fromRGB(25, 25, 32),
+    Header1 = Color3.fromRGB(20, 20, 24),
+    Header2 = Color3.fromRGB(28, 28, 35),
+    Container = Color3.fromRGB(32, 32, 38),
+    Text = Color3.fromRGB(245, 245, 245),
     TextDim = Color3.fromRGB(150, 150, 160),
     Red = Color3.fromRGB(255, 60, 60),
     DarkRed = Color3.fromRGB(180, 40, 40)
@@ -173,7 +177,7 @@ local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 0, 0, 0)
 MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MainFrame.BackgroundColor3 = UITheme.Background
+MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.Active = true
@@ -184,6 +188,14 @@ local MainFrameCorner = Instance.new("UICorner")
 MainFrameCorner.CornerRadius = UDim.new(0, 10)
 MainFrameCorner.Parent = MainFrame
 
+local MainBgGradient = Instance.new("UIGradient")
+MainBgGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, UITheme.Background1),
+    ColorSequenceKeypoint.new(1, UITheme.Background2)
+})
+MainBgGradient.Parent = MainFrame
+table.insert(AnimatedGradients, MainBgGradient)
+
 local MainStroke = Instance.new("UIStroke")
 MainStroke.Thickness = 1.5
 MainStroke.Color = CurrentAccentColor
@@ -193,13 +205,21 @@ table.insert(DynamicUIElements.Strokes, MainStroke)
 
 local TopBar = Instance.new("Frame")
 TopBar.Size = UDim2.new(1, 0, 0, 40)
-TopBar.BackgroundColor3 = UITheme.Header
+TopBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 TopBar.BorderSizePixel = 0
 TopBar.Parent = MainFrame
 
 local TopBarCorner = Instance.new("UICorner")
 TopBarCorner.CornerRadius = UDim.new(0, 10)
 TopBarCorner.Parent = TopBar
+
+local TopBarGradient = Instance.new("UIGradient")
+TopBarGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, UITheme.Header1),
+    ColorSequenceKeypoint.new(1, UITheme.Header2)
+})
+TopBarGradient.Parent = TopBar
+table.insert(AnimatedGradients, TopBarGradient)
 
 local TopBarDivider = Instance.new("Frame")
 TopBarDivider.Size = UDim2.new(1, 0, 0, 1)
@@ -239,7 +259,7 @@ MinimizeCorner.Parent = MinimizeButton
 local TabBar = Instance.new("ScrollingFrame")
 TabBar.Size = UDim2.new(1, 0, 0, 35)
 TabBar.Position = UDim2.new(0, 0, 0, 40)
-TabBar.BackgroundColor3 = UITheme.Header
+TabBar.BackgroundTransparency = 1
 TabBar.BorderSizePixel = 0
 TabBar.ScrollBarThickness = 0
 TabBar.ScrollingDirection = Enum.ScrollingDirection.X
@@ -248,8 +268,8 @@ TabBar.CanvasSize = UDim2.new(0, 0, 0, 0)
 TabBar.Parent = MainFrame
 
 local TabPadding = Instance.new("UIPadding")
-TabPadding.PaddingLeft = UDim.new(0, 15)
-TabPadding.PaddingRight = UDim.new(0, 15)
+TabPadding.PaddingLeft = UDim.new(0, 10)
+TabPadding.PaddingRight = UDim.new(0, 10)
 TabPadding.Parent = TabBar
 
 local TabLayout = Instance.new("UIListLayout")
@@ -257,7 +277,7 @@ TabLayout.FillDirection = Enum.FillDirection.Horizontal
 TabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 TabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabLayout.Padding = UDim.new(0, 15)
+TabLayout.Padding = UDim.new(0, 8)
 TabLayout.Parent = TabBar
 
 local TabDivider = Instance.new("Frame")
@@ -281,12 +301,20 @@ local FloatingBall = Instance.new("TextButton")
 FloatingBall.Size = UDim2.new(0, 0, 0, 0)
 FloatingBall.Position = UDim2.new(0.5, 0, 0.5, 0)
 FloatingBall.AnchorPoint = Vector2.new(0.5, 0.5)
-FloatingBall.BackgroundColor3 = UITheme.Header
+FloatingBall.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 FloatingBall.BorderSizePixel = 0
 FloatingBall.Visible = false
 FloatingBall.Text = ""
 FloatingBall.ZIndex = 999
 FloatingBall.Parent = MainGui
+
+local FloatingBallGradient = Instance.new("UIGradient")
+FloatingBallGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, UITheme.Header1),
+    ColorSequenceKeypoint.new(1, UITheme.Header2)
+})
+FloatingBallGradient.Parent = FloatingBall
+table.insert(AnimatedGradients, FloatingBallGradient)
 
 local FloatingBallCorner = Instance.new("UICorner")
 FloatingBallCorner.CornerRadius = UDim.new(1, 0)
@@ -324,7 +352,8 @@ local function CreateTabScroll(name)
     scroll.BorderSizePixel = 0
     scroll.ScrollBarThickness = 2
     scroll.ScrollBarImageColor3 = UITheme.Container
-    scroll.AutomaticCanvasSize = Enum.AutomaticSize.None
+    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     scroll.Visible = false
     scroll.Parent = ContentContainer
 
@@ -341,10 +370,6 @@ local function CreateTabScroll(name)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Parent = scroll
 
-    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 25)
-    end)
-
     return scroll
 end
 
@@ -358,7 +383,7 @@ local ActiveTabButton = nil
 
 local function CreateTabButton(text, targetScroll, order)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 95, 1, 0)
+    btn.Size = UDim2.new(0, 85, 1, 0)
     btn.BackgroundTransparency = 1
     btn.Text = text
     btn.Font = Enum.Font.Code
@@ -385,19 +410,15 @@ local function CreateTabButton(text, targetScroll, order)
 
     btn.MouseButton1Click:Connect(function()
         if ActiveTabButton == btn then return end
-        
         for i, v in ipairs(DynamicUIElements.Texts) do
             if v == ActiveTabButton then table.remove(DynamicUIElements.Texts, i) break end
         end
-        
         ActiveTabButton.TextColor3 = UITheme.TextDim
         CreateTween(ActiveTabButton:FindFirstChild("Frame"), {Size = UDim2.new(0, 0, 0, 2)}, 0.3)
-        
         ActiveTabButton = btn
         btn.TextColor3 = CurrentAccentColor
         table.insert(DynamicUIElements.Texts, btn)
         CreateTween(highlight, {Size = UDim2.new(0.8, 0, 0, 2)}, 0.3)
-
         TabAimbot.Visible = false
         TabEsp.Visible = false
         TabSettings.Visible = false
@@ -422,6 +443,15 @@ local function UpdateUIColors()
     for _, obj in pairs(DynamicUIElements.Texts) do
         if obj and obj.Parent then obj.TextColor3 = CurrentAccentColor end
     end
+    for _, grad in pairs(DynamicUIElements.Gradients) do
+        if grad and grad.Parent then
+            local darker = Color3.fromRGB(math.max(CurrentAccentColor.R*255 - 40, 0), math.max(CurrentAccentColor.G*255 - 40, 0), math.max(CurrentAccentColor.B*255 - 40, 0))
+            grad.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, CurrentAccentColor),
+                ColorSequenceKeypoint.new(1, darker)
+            })
+        end
+    end
 end
 
 local function TriggerUpdaters()
@@ -429,6 +459,18 @@ local function TriggerUpdaters()
         pcall(fn)
     end
     UpdateUIColors()
+end
+
+local function ApplyButtonGradient(button)
+    local grad = Instance.new("UIGradient")
+    local darker = Color3.fromRGB(math.max(CurrentAccentColor.R*255 - 40, 0), math.max(CurrentAccentColor.G*255 - 40, 0), math.max(CurrentAccentColor.B*255 - 40, 0))
+    grad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, CurrentAccentColor),
+        ColorSequenceKeypoint.new(1, darker)
+    })
+    grad.Rotation = 90
+    grad.Parent = button
+    table.insert(DynamicUIElements.Gradients, grad)
 end
 
 local function CreateToggle(parent, titleText, settingKey, colorOff, order, callback)
@@ -460,9 +502,11 @@ local function CreateToggle(parent, titleText, settingKey, colorOff, order, call
             for _,v in ipairs(DynamicUIElements.Backgrounds) do if v == button then found = true break end end
             if not found then table.insert(DynamicUIElements.Backgrounds, button) end
             button.BackgroundColor3 = CurrentAccentColor
+            if not button:FindFirstChildOfClass("UIGradient") then ApplyButtonGradient(button) end
         else
             for i,v in ipairs(DynamicUIElements.Backgrounds) do if v == button then table.remove(DynamicUIElements.Backgrounds, i) break end end
             button.BackgroundColor3 = colorOff
+            if button:FindFirstChildOfClass("UIGradient") then button:FindFirstChildOfClass("UIGradient"):Destroy() end
         end
     end
     table.insert(UIUpdaters, updateUI)
@@ -582,6 +626,7 @@ local function CreateSlider(parent, labelTitle, settingKey, minVal, maxVal, orde
     sFill.Parent = sBg
     Instance.new("UICorner", sFill).CornerRadius = UDim.new(1, 0)
     table.insert(DynamicUIElements.Backgrounds, sFill)
+    ApplyButtonGradient(sFill)
 
     local knob = Instance.new("Frame")
     knob.Size = UDim2.new(0, 12, 0, 12)
@@ -629,11 +674,10 @@ local function CreateSlider(parent, labelTitle, settingKey, minVal, maxVal, orde
     return container
 end
 
-local function CreateColorMenu(parent, titleText, order, hueKey, satKey, valKey, alphaKey)
+local function CreateHueMenu(parent, titleText, order, hueKey, valKey, alphaKey)
     local wrap = Instance.new("Frame")
     
     local sliderCount = 1
-    if satKey then sliderCount = sliderCount + 1 end
     if valKey then sliderCount = sliderCount + 1 end
     if alphaKey then sliderCount = sliderCount + 1 end
     local expandedHeight = 36 + (sliderCount * 45) + 10
@@ -720,6 +764,7 @@ local function CreateColorMenu(parent, titleText, order, hueKey, satKey, valKey,
             fl.Parent = b
             Instance.new("UICorner", fl).CornerRadius = UDim.new(1, 0)
             table.insert(DynamicUIElements.Backgrounds, fl)
+            ApplyButtonGradient(fl)
         end
 
         local k = Instance.new("Frame", b)
@@ -782,23 +827,37 @@ local function CreateColorMenu(parent, titleText, order, hueKey, satKey, valKey,
     return wrap
 end
 
-CreateToggle(TabAimbot, "[ AIMBOT ]", "AimbotEnabled", UITheme.Red, 1)
+local SliderFovRadius, MenuFovColor
+local BtnEspEnemy, MenuEspEnemy
+local BtnEspAlly, MenuEspAlly
+
+local function UpdateMenuVisibility()
+    if SliderFovRadius then SliderFovRadius.Visible = CheatSettings.AimbotEnabled or CheatSettings.FovVisible end
+    if MenuFovColor then MenuFovColor.Visible = CheatSettings.FovVisible end
+    if BtnEspEnemy then BtnEspEnemy.Visible = CheatSettings.EspEnabled end
+    if MenuEspEnemy then MenuEspEnemy.Visible = CheatSettings.EspEnabled end
+    if BtnEspAlly then BtnEspAlly.Visible = CheatSettings.EspEnabled end
+    if MenuEspAlly then MenuEspAlly.Visible = CheatSettings.EspEnabled end
+end
+table.insert(UIUpdaters, UpdateMenuVisibility)
+
+CreateToggle(TabAimbot, "[ AIMBOT ]", "AimbotEnabled", UITheme.Red, 1, UpdateMenuVisibility)
 CreateModeToggle(TabAimbot, "[ AIM MODE ]", "AimbotMode", {"Always", "On RMB"}, 2)
 CreateToggle(TabAimbot, "[ TEAM CHECK ]", "TeamCheck", UITheme.Red, 3)
 CreateSlider(TabAimbot, "Head Chance %", "HeadChance", 0, 100, 4)
 CreateSlider(TabAimbot, "Max Distance", "MaxDistance", 0, 5000, 5)
 
-CreateToggle(TabAimbot, "[ FOV CIRCLE ]", "FovVisible", UITheme.Red, 6)
-CreateSlider(TabAimbot, "FOV Radius", "FovRadius", 0, 1000, 7)
-CreateColorMenu(TabAimbot, "FOV Options", 8, "FovHue", "FovSat", "FovVal", "FovTransparency")
+CreateToggle(TabAimbot, "[ FOV CIRCLE ]", "FovVisible", UITheme.Red, 6, UpdateMenuVisibility)
+SliderFovRadius = CreateSlider(TabAimbot, "FOV Radius", "FovRadius", 0, 1000, 7)
+MenuFovColor = CreateHueMenu(TabAimbot, "FOV Options", 8, "FovHue", "FovSat", "FovVal", "FovTransparency")
 
-CreateToggle(TabEsp, "[ ESP ]", "EspEnabled", UITheme.Red, 1)
-CreateToggle(TabEsp, "[ ENEMIES ESP ]", "EspEnemies", UITheme.Red, 2)
-CreateColorMenu(TabEsp, "Enemies Color", 3, "EspEnemyHue", "EspEnemySat", "EspEnemyVal", "EspEnemyTransp")
-CreateToggle(TabEsp, "[ ALLIES ESP ]", "EspAllies", UITheme.Red, 4)
-CreateColorMenu(TabEsp, "Allies Color", 5, "EspAllyHue", "EspAllySat", "EspAllyVal", "EspAllyTransp")
+CreateToggle(TabEsp, "[ ESP ]", "EspEnabled", UITheme.Red, 1, UpdateMenuVisibility)
+BtnEspEnemy, _ = CreateToggle(TabEsp, "[ ENEMIES ESP ]", "EspEnemies", UITheme.Red, 2)
+MenuEspEnemy = CreateHueMenu(TabEsp, "Enemies Color", 3, "EspEnemyHue", "EspEnemySat", "EspEnemyVal", "EspEnemyTransp")
+BtnEspAlly, _ = CreateToggle(TabEsp, "[ ALLIES ESP ]", "EspAllies", UITheme.Red, 4)
+MenuEspAlly = CreateHueMenu(TabEsp, "Allies Color", 5, "EspAllyHue", "EspAllySat", "EspAllyVal", "EspAllyTransp")
 
-CreateColorMenu(TabSettings, "UI Accent Color", 1, "MenuHue", "MenuSat", "MenuVal", nil)
+CreateHueMenu(TabSettings, "UI Accent Color", 1, "MenuHue", "MenuSat", "MenuVal", nil)
 
 local isBinding = false
 local PanicKeyLabel
@@ -1040,9 +1099,7 @@ table.insert(ScriptConnections, playerAddedConn)
 
 local playerRemovedConn = Players.PlayerRemoving:Connect(function(player)
     if EspInstances[player] and EspInstances[player].box then 
-        pcall(function()
-            EspInstances[player].box:Remove() 
-        end)
+        pcall(function() espData.box:Remove() end)
         EspInstances[player] = nil 
     end
 end)
@@ -1061,11 +1118,11 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
         return
     end
 
-    if CheatSettings.FovVisible and CheatSettings.FovRadius > 0 and not IsCompletelyHidden then
+    if CheatSettings.FovVisible and CheatSettings.FovRadius > 0 then
         FovCircle.Size = UDim2.new(0, CheatSettings.FovRadius * 2, 0, CheatSettings.FovRadius * 2)
         FovCircleStroke.Color = Color3.fromHSV(CheatSettings.FovHue, CheatSettings.FovSat / 100, CheatSettings.FovVal / 100)
         FovCircleStroke.Transparency = CheatSettings.FovTransparency / 100
-        FovCircle.Visible = true
+        FovCircle.Visible = not IsCompletelyHidden
     else
         FovCircle.Visible = false
     end
@@ -1075,7 +1132,7 @@ local espRenderConn = RunService.RenderStepped:Connect(function()
         local humanoid = character and character:FindFirstChildOfClass("Humanoid")
         local rootPart = character and (character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("Head"))
         
-        if CheatSettings.EspEnabled and rootPart and humanoid and humanoid.Health > 0 and not IsCompletelyHidden then
+        if CheatSettings.EspEnabled and rootPart and humanoid and humanoid.Health > 0 then
             local isTeam = IsTeammate(player)
             local shouldShow = (isTeam and CheatSettings.EspAllies) or (not isTeam and CheatSettings.EspEnemies)
             
@@ -1245,6 +1302,12 @@ task.spawn(function()
                 255
             )
         end
+        
+        for _, grad in pairs(AnimatedGradients) do
+            if grad and grad.Parent then
+                grad.Rotation = (animTime * 30) % 360
+            end
+        end
     end)
 
     for i, lbl in ipairs(letterLabels) do
@@ -1263,9 +1326,7 @@ task.spawn(function()
     
     task.wait(0.5)
     CreateTween(LoadingContainer, {BackgroundTransparency = 1}, 0.5).Completed:Connect(function()
-        rgbConnection:Disconnect()
         LoadingContainer:Destroy()
-        
         IsCheatLoaded = true
         MainFrame.Visible = true
         local viewportCenter = Camera.ViewportSize / 2
