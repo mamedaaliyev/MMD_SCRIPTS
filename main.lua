@@ -271,6 +271,7 @@ MinimizeButton.TextColor3 = UITheme.TextDim
 MinimizeButton.BackgroundColor3 = UITheme.Container
 MinimizeButton.BorderSizePixel = 0
 MinimizeButton.AutoButtonColor = false
+MinimizeButton.ZIndex = 1000 -- ИСПРАВЛЕНО 1: Теперь минус всегда нажимается
 MinimizeButton.Parent = TopBar
 
 local MinimizeCorner = Instance.new("UICorner")
@@ -357,6 +358,7 @@ FBLabel.Text = "MMD"
 FBLabel.Font = Enum.Font.GothamBold
 FBLabel.TextSize = 18
 FBLabel.TextColor3 = CurrentAccentColor
+FBLabel.ZIndex = 1000
 FBLabel.Parent = FloatingBall
 table.insert(DynamicUIElements.Texts, FBLabel)
 
@@ -997,6 +999,7 @@ local resizeStartSize = Vector2.new(0, 0)
 local resizeStartPos = UDim2.new()
 local resizeInputPoint = nil
 
+-- ИСПРАВЛЕНО 2: Рамки теперь не мешают перемещению меню
 local function CreateResizeHandle(name, size, pos, anchor, rx, ry)
     local handle = Instance.new("TextButton")
     handle.Name = name
@@ -1022,16 +1025,17 @@ local function CreateResizeHandle(name, size, pos, anchor, rx, ry)
     table.insert(ScriptConnections, handleDown)
 end
 
-local gs = 35 -- Increased from 15 for better touch support on mobile devices
-CreateResizeHandle("R_TL", UDim2.new(0, gs*2, 0, gs*2), UDim2.new(0,0, 0,0), Vector2.new(0,0), -1, -1)
-CreateResizeHandle("R_TR", UDim2.new(0, gs*2, 0, gs*2), UDim2.new(1,0, 0,0), Vector2.new(1,0), 1, -1)
-CreateResizeHandle("R_BL", UDim2.new(0, gs*2, 0, gs*2), UDim2.new(0,0, 1,0), Vector2.new(0,1), -1, 1)
-CreateResizeHandle("R_BR", UDim2.new(0, gs*2, 0, gs*2), UDim2.new(1,0, 1,0), Vector2.new(1,1), 1, 1)
+local gsEdge = 15
+local gsCorner = 30
+CreateResizeHandle("R_TL", UDim2.new(0, gsCorner, 0, gsCorner), UDim2.new(0,0, 0,0), Vector2.new(0,0), -1, -1)
+CreateResizeHandle("R_TR", UDim2.new(0, gsCorner, 0, gsCorner), UDim2.new(1,0, 0,0), Vector2.new(1,0), 1, -1)
+CreateResizeHandle("R_BL", UDim2.new(0, gsCorner, 0, gsCorner), UDim2.new(0,0, 1,0), Vector2.new(0,1), -1, 1)
+CreateResizeHandle("R_BR", UDim2.new(0, gsCorner, 0, gsCorner), UDim2.new(1,0, 1,0), Vector2.new(1,1), 1, 1)
 
-CreateResizeHandle("R_T", UDim2.new(1, -gs*4, 0, gs), UDim2.new(0.5,0, 0,0), Vector2.new(0.5,0), 0, -1)
-CreateResizeHandle("R_B", UDim2.new(1, -gs*4, 0, gs), UDim2.new(0.5,0, 1,0), Vector2.new(0.5,1), 0, 1)
-CreateResizeHandle("R_L", UDim2.new(0, gs, 1, -gs*4), UDim2.new(0,0, 0.5,0), Vector2.new(0,0.5), -1, 0)
-CreateResizeHandle("R_R", UDim2.new(0, gs, 1, -gs*4), UDim2.new(1,0, 0.5,0), Vector2.new(1,0.5), 1, 0)
+CreateResizeHandle("R_T", UDim2.new(1, -gsCorner*2, 0, gsEdge), UDim2.new(0.5,0, 0,0), Vector2.new(0.5,0), 0, -1)
+CreateResizeHandle("R_B", UDim2.new(1, -gsCorner*2, 0, gsEdge), UDim2.new(0.5,0, 1,0), Vector2.new(0.5,1), 0, 1)
+CreateResizeHandle("R_L", UDim2.new(0, gsEdge, 1, -gsCorner*2), UDim2.new(0,0, 0.5,0), Vector2.new(0,0.5), -1, 0)
+CreateResizeHandle("R_R", UDim2.new(0, gsEdge, 1, -gsCorner*2), UDim2.new(1,0, 0.5,0), Vector2.new(1,0.5), 1, 0)
 
 local function SetupDrag(triggerFrame)
     local dragBegan = triggerFrame.InputBegan:Connect(function(input)
@@ -1386,7 +1390,32 @@ end
 local activeTarget = nil
 local activeBodyPart = nil
 
-local aimbotRenderConn = RunService.RenderStepped:Connect(function(dt)
+-- ИСПРАВЛЕНО 3: Безупречная функция захвата (Target Lock) убивает всю тряску аимбота
+local function GetTargetLock()
+    if not activeTarget or not activeTarget.Character or not activeBodyPart or not activeBodyPart.Parent then return false end
+    local hum = activeTarget.Character:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return false end
+    if CheatSettings.TeamCheck and IsTeammate(activeTarget) then return false end
+    
+    local dist = (activeBodyPart.Position - Camera.CFrame.Position).Magnitude
+    if dist > CheatSettings.MaxDistance then return false end
+    
+    local screenPos, onScreen = Camera:WorldToViewportPoint(activeBodyPart.Position)
+    if not onScreen then return false end
+    
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    if (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude > CheatSettings.FovRadius then return false end
+    
+    local rayParams = RaycastParams.new()
+    if LocalPlayer.Character then rayParams.FilterDescendantsInstances = {LocalPlayer.Character} end
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    local hit = workspace:Raycast(Camera.CFrame.Position, (activeBodyPart.Position - Camera.CFrame.Position).Unit * dist, rayParams)
+    if hit and (hit.Position - activeBodyPart.Position).Magnitude >= 3 then return false end
+    
+    return true
+end
+
+local aimbotRenderConn = RunService.RenderStepped:Connect(function()
     if not IsCheatLoaded or not CheatSettings.AimbotEnabled then 
         activeTarget = nil 
         return 
@@ -1397,38 +1426,16 @@ local aimbotRenderConn = RunService.RenderStepped:Connect(function(dt)
         return
     end
     
-    local isValidLock = false
-    if activeTarget and activeTarget.Character and activeBodyPart and activeBodyPart.Parent then
-        local hum = activeTarget.Character:FindFirstChildOfClass("Humanoid")
-        if hum and hum.Health > 0 then
-            if not (CheatSettings.TeamCheck and IsTeammate(activeTarget)) then
-                local dist = (activeBodyPart.Position - Camera.CFrame.Position).Magnitude
-                if dist <= CheatSettings.MaxDistance then
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(activeBodyPart.Position)
-                    if onScreen then
-                        local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                        local distFromCenter = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-                        if distFromCenter <= CheatSettings.FovRadius then
-                            isValidLock = true
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    if not isValidLock then
+    if not GetTargetLock() then
         local foundTarget = FetchOptimalTarget()
         if foundTarget then
             activeTarget = foundTarget
             if foundTarget.Character then
                 local randomRoll = math.random(1, 100)
                 if randomRoll <= CheatSettings.HeadChance then
-                    activeBodyPart = foundTarget.Character:FindFirstChild("Head")
+                    activeBodyPart = foundTarget.Character:FindFirstChild("Head") or foundTarget.Character:FindFirstChild("HumanoidRootPart")
                 else
-                    activeBodyPart = foundTarget.Character:FindFirstChild("HumanoidRootPart") 
-                                  or foundTarget.Character:FindFirstChild("Torso") 
-                                  or foundTarget.Character:FindFirstChild("Head")
+                    activeBodyPart = foundTarget.Character:FindFirstChild("HumanoidRootPart") or foundTarget.Character:FindFirstChild("Torso") or foundTarget.Character:FindFirstChild("Head")
                 end
             end
         else
@@ -1439,7 +1446,7 @@ local aimbotRenderConn = RunService.RenderStepped:Connect(function(dt)
     
     if activeTarget and activeBodyPart and activeBodyPart.Parent then 
         local targetCFrame = CFrame.new(Camera.CFrame.Position, activeBodyPart.Position)
-        Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, math.clamp(dt * 30, 0, 1)) 
+        Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.4) 
     else 
         activeTarget = nil 
     end
