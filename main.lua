@@ -1022,7 +1022,7 @@ local function CreateResizeHandle(name, size, pos, anchor, rx, ry)
     table.insert(ScriptConnections, handleDown)
 end
 
-local gs = 15
+local gs = 35 -- Increased from 15 for better touch support on mobile devices
 CreateResizeHandle("R_TL", UDim2.new(0, gs*2, 0, gs*2), UDim2.new(0,0, 0,0), Vector2.new(0,0), -1, -1)
 CreateResizeHandle("R_TR", UDim2.new(0, gs*2, 0, gs*2), UDim2.new(1,0, 0,0), Vector2.new(1,0), 1, -1)
 CreateResizeHandle("R_BL", UDim2.new(0, gs*2, 0, gs*2), UDim2.new(0,0, 1,0), Vector2.new(0,1), -1, 1)
@@ -1439,7 +1439,7 @@ local aimbotRenderConn = RunService.RenderStepped:Connect(function(dt)
     
     if activeTarget and activeBodyPart and activeBodyPart.Parent then 
         local targetCFrame = CFrame.new(Camera.CFrame.Position, activeBodyPart.Position)
-        Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.5) 
+        Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, math.clamp(dt * 30, 0, 1)) 
     else 
         activeTarget = nil 
     end
