@@ -1441,3 +1441,5 @@ getgenv().mmd_scripts_cheat.Destroy = function()
         end 
     end
 end
+    end
+end
