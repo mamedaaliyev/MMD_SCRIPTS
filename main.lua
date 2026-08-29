@@ -51,7 +51,7 @@ local CheatSettings = {
     PanicKey = "Insert",
     
     AimbotEnabled = false,
-    AimbotMode = "Always",
+    AimbotMode = "On RMB", -- ИСПРАВЛЕНО: Теперь по умолчанию работает только при зажатой правой кнопке мыши
     TeamCheck = true,
     HeadChance = 100,
     MaxDistance = 1000,
@@ -893,16 +893,27 @@ local function CreateHueMenu(parent, titleText, order, hueKey, satKey, valKey, a
     return wrap
 end
 
-CreateToggle(TabAimbot, "[ AIMBOT ]", "AimbotEnabled", UITheme.Red, 1)
+local SliderFovRadius, MenuFovColor
+local btnEspEnemy, menuEspEnemy
+local btnEspAlly, menuEspAlly
+
+local function UpdateMenuVisibility()
+    if SliderFovRadius then SliderFovRadius.Visible = CheatSettings.AimbotEnabled or CheatSettings.FovVisible end
+    if MenuFovColor then MenuFovColor.Visible = CheatSettings.FovVisible end
+end
+table.insert(UIUpdaters, UpdateMenuVisibility)
+
+CreateToggle(TabAimbot, "[ AIMBOT ]", "AimbotEnabled", UITheme.Red, 1, UpdateMenuVisibility)
 CreateModeToggle(TabAimbot, "[ AIM MODE ]", "AimbotMode", {"Always", "On RMB"}, 2)
-CreateToggle(TabAimbot, "[ TEAM CHECK ]", "TeamCheck", UITheme.Red, 3)
+CreateToggle(TabAimbot, "[ TEAM CHECK ]", "TeamCheck", UITheme.Red, 3, UpdateMenuVisibility)
 CreateSlider(TabAimbot, "Head Chance %", "HeadChance", 0, 100, 4)
 CreateSlider(TabAimbot, "Max Distance", "MaxDistance", 0, 5000, 5)
-CreateToggle(TabAimbot, "[ FOV CIRCLE ]", "FovVisible", UITheme.Red, 6)
-CreateSlider(TabAimbot, "FOV Radius", "FovRadius", 0, 1000, 7)
-CreateHueMenu(TabAimbot, "FOV Options", 8, "FovHue", "FovSat", "FovVal", "FovTransparency")
 
-CreateToggle(TabEsp, "[ ESP ]", "EspEnabled", UITheme.Red, 1)
+CreateToggle(TabAimbot, "[ FOV CIRCLE ]", "FovVisible", UITheme.Red, 6, UpdateMenuVisibility)
+SliderFovRadius = CreateSlider(TabAimbot, "FOV Radius", "FovRadius", 0, 1000, 7)
+MenuFovColor = CreateHueMenu(TabAimbot, "FOV Options", 8, "FovHue", "FovSat", "FovVal", "FovTransparency")
+
+CreateToggle(TabEsp, "[ ESP ]", "EspEnabled", UITheme.Red, 1, UpdateMenuVisibility)
 CreateHueMenu(TabEsp, "ESP Color", 2, "EspHue", "EspSat", "EspVal", "EspTransp")
 
 CreateHueMenu(TabSettings, "UI Accent Color", 1, "MenuHue", "MenuSat", "MenuVal", nil)
@@ -930,7 +941,7 @@ end)
 
 CreateAction(TabSettings, "[ RESET SETTINGS ]", UITheme.DarkRed, 3, function(btn, lbl)
     CheatSettings.AimbotEnabled = false
-    CheatSettings.AimbotMode = "Always"
+    CheatSettings.AimbotMode = "On RMB"
     CheatSettings.TeamCheck = true
     CheatSettings.HeadChance = 100
     CheatSettings.MaxDistance = 1000
@@ -1139,6 +1150,41 @@ local function IsTeammate(player)
     return isCustomTeam
 end
 
+local function IsTargetValid(player)
+    if not player or not player.Character then return false end
+    if CheatSettings.TeamCheck and IsTeammate(player) then return false end
+    
+    local head = player.Character:FindFirstChild("Head")
+    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    if not head or not humanoid or humanoid.Health <= 0 then return false end
+    
+    local dist = (head.Position - Camera.CFrame.Position).Magnitude
+    if dist > CheatSettings.MaxDistance then return false end
+    
+    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+    if not onScreen then return false end
+    
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    local distanceFromCenter = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+    if distanceFromCenter > CheatSettings.FovRadius then return false end
+    
+    local rayParams = RaycastParams.new()
+    if LocalPlayer.Character then
+        rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    end
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    local origin = Camera.CFrame.Position
+    local direction = (head.Position - origin).Unit * dist
+    local hitResult = workspace:Raycast(origin, direction, rayParams)
+    
+    if hitResult and (hitResult.Position - head.Position).Magnitude >= 3 then
+        return false
+    end
+    
+    return true
+end
+
 local FovScreenGui = Instance.new("ScreenGui")
 FovScreenGui.Name = HttpService:GenerateGUID(false)
 FovScreenGui.ResetOnSpawn = false
@@ -1314,30 +1360,32 @@ local aimbotRenderConn = RunService.RenderStepped:Connect(function()
         return
     end
     
-    local foundTarget = FetchOptimalTarget()
-    
-    if foundTarget then
-        activeTarget = foundTarget
-        if foundTarget.Character then
+    -- ИСПРАВЛЕНО: Target Lock (Захват цели). Пока текущая цель жива и видна - не меняем направление!
+    if activeTarget and IsTargetValid(activeTarget) then
+        -- Мы держим текущую цель. Больше кубик не бросаем, камера не прыгает.
+    else
+        activeTarget = FetchOptimalTarget()
+        if activeTarget and activeTarget.Character then
+            -- Выбираем часть тела ТОЛЬКО один раз, при нахождении НОВОЙ цели
             local randomRoll = math.random(1, 100)
             if randomRoll <= CheatSettings.HeadChance then
-                activeBodyPart = foundTarget.Character:FindFirstChild("Head")
+                activeBodyPart = activeTarget.Character:FindFirstChild("Head")
             else
-                activeBodyPart = foundTarget.Character:FindFirstChild("HumanoidRootPart") 
-                              or foundTarget.Character:FindFirstChild("Torso") 
-                              or foundTarget.Character:FindFirstChild("Head")
+                activeBodyPart = activeTarget.Character:FindFirstChild("HumanoidRootPart") 
+                              or activeTarget.Character:FindFirstChild("Torso") 
+                              or activeTarget.Character:FindFirstChild("Head")
             end
         else
             activeBodyPart = nil
         end
-        
-        if activeBodyPart and activeBodyPart.Parent then 
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, activeBodyPart.Position) 
-        else 
-            activeTarget = nil 
-        end
-    else
-        activeTarget = nil
+    end
+    
+    if activeTarget and activeBodyPart and activeBodyPart.Parent then 
+        -- ИСПРАВЛЕНО: Плавная, человечная наводка (Lerp 0.5), убирающая микро-тряску (Seizure)
+        local targetCFrame = CFrame.new(Camera.CFrame.Position, activeBodyPart.Position)
+        Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.5)
+    else 
+        activeTarget = nil 
     end
 end)
 table.insert(ScriptConnections, aimbotRenderConn)
