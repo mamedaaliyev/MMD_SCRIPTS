@@ -51,7 +51,7 @@ local CheatSettings = {
     PanicKey = "Insert",
     
     AimbotEnabled = false,
-    AimbotMode = "On RMB", -- ИСПРАВЛЕНО: Теперь по умолчанию работает только при зажатой правой кнопке мыши
+    AimbotMode = "Always",
     TeamCheck = true,
     HeadChance = 100,
     MaxDistance = 1000,
@@ -894,8 +894,6 @@ local function CreateHueMenu(parent, titleText, order, hueKey, satKey, valKey, a
 end
 
 local SliderFovRadius, MenuFovColor
-local btnEspEnemy, menuEspEnemy
-local btnEspAlly, menuEspAlly
 
 local function UpdateMenuVisibility()
     if SliderFovRadius then SliderFovRadius.Visible = CheatSettings.AimbotEnabled or CheatSettings.FovVisible end
@@ -941,7 +939,7 @@ end)
 
 CreateAction(TabSettings, "[ RESET SETTINGS ]", UITheme.DarkRed, 3, function(btn, lbl)
     CheatSettings.AimbotEnabled = false
-    CheatSettings.AimbotMode = "On RMB"
+    CheatSettings.AimbotMode = "Always"
     CheatSettings.TeamCheck = true
     CheatSettings.HeadChance = 100
     CheatSettings.MaxDistance = 1000
@@ -1150,41 +1148,6 @@ local function IsTeammate(player)
     return isCustomTeam
 end
 
-local function IsTargetValid(player)
-    if not player or not player.Character then return false end
-    if CheatSettings.TeamCheck and IsTeammate(player) then return false end
-    
-    local head = player.Character:FindFirstChild("Head")
-    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-    if not head or not humanoid or humanoid.Health <= 0 then return false end
-    
-    local dist = (head.Position - Camera.CFrame.Position).Magnitude
-    if dist > CheatSettings.MaxDistance then return false end
-    
-    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-    if not onScreen then return false end
-    
-    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    local distanceFromCenter = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
-    if distanceFromCenter > CheatSettings.FovRadius then return false end
-    
-    local rayParams = RaycastParams.new()
-    if LocalPlayer.Character then
-        rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
-    end
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    
-    local origin = Camera.CFrame.Position
-    local direction = (head.Position - origin).Unit * dist
-    local hitResult = workspace:Raycast(origin, direction, rayParams)
-    
-    if hitResult and (hitResult.Position - head.Position).Magnitude >= 3 then
-        return false
-    end
-    
-    return true
-end
-
 local FovScreenGui = Instance.new("ScreenGui")
 FovScreenGui.Name = HttpService:GenerateGUID(false)
 FovScreenGui.ResetOnSpawn = false
@@ -1349,7 +1312,7 @@ end
 local activeTarget = nil
 local activeBodyPart = nil
 
-local aimbotRenderConn = RunService.RenderStepped:Connect(function()
+local aimbotRenderConn = RunService.RenderStepped:Connect(function(dt)
     if not IsCheatLoaded or not CheatSettings.AimbotEnabled then 
         activeTarget = nil 
         return 
@@ -1360,30 +1323,49 @@ local aimbotRenderConn = RunService.RenderStepped:Connect(function()
         return
     end
     
-    -- ИСПРАВЛЕНО: Target Lock (Захват цели). Пока текущая цель жива и видна - не меняем направление!
-    if activeTarget and IsTargetValid(activeTarget) then
-        -- Мы держим текущую цель. Больше кубик не бросаем, камера не прыгает.
-    else
-        activeTarget = FetchOptimalTarget()
-        if activeTarget and activeTarget.Character then
-            -- Выбираем часть тела ТОЛЬКО один раз, при нахождении НОВОЙ цели
-            local randomRoll = math.random(1, 100)
-            if randomRoll <= CheatSettings.HeadChance then
-                activeBodyPart = activeTarget.Character:FindFirstChild("Head")
-            else
-                activeBodyPart = activeTarget.Character:FindFirstChild("HumanoidRootPart") 
-                              or activeTarget.Character:FindFirstChild("Torso") 
-                              or activeTarget.Character:FindFirstChild("Head")
+    local isValidLock = false
+    if activeTarget and activeTarget.Character and activeBodyPart and activeBodyPart.Parent then
+        local hum = activeTarget.Character:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health > 0 then
+            if not (CheatSettings.TeamCheck and IsTeammate(activeTarget)) then
+                local dist = (activeBodyPart.Position - Camera.CFrame.Position).Magnitude
+                if dist <= CheatSettings.MaxDistance then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(activeBodyPart.Position)
+                    if onScreen then
+                        local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                        local distFromCenter = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+                        if distFromCenter <= CheatSettings.FovRadius then
+                            isValidLock = true
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if not isValidLock then
+        local foundTarget = FetchOptimalTarget()
+        if foundTarget then
+            activeTarget = foundTarget
+            if foundTarget.Character then
+                local randomRoll = math.random(1, 100)
+                if randomRoll <= CheatSettings.HeadChance then
+                    activeBodyPart = foundTarget.Character:FindFirstChild("Head")
+                else
+                    activeBodyPart = foundTarget.Character:FindFirstChild("HumanoidRootPart") 
+                                  or foundTarget.Character:FindFirstChild("Torso") 
+                                  or foundTarget.Character:FindFirstChild("Head")
+                end
             end
         else
+            activeTarget = nil
             activeBodyPart = nil
         end
     end
     
     if activeTarget and activeBodyPart and activeBodyPart.Parent then 
-        -- ИСПРАВЛЕНО: Плавная, человечная наводка (Lerp 0.5), убирающая микро-тряску (Seizure)
         local targetCFrame = CFrame.new(Camera.CFrame.Position, activeBodyPart.Position)
-        Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.5)
+        Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.5) 
     else 
         activeTarget = nil 
     end
